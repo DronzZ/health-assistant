@@ -52,13 +52,13 @@ export default async function RunningPage() {
           <div className="bg-zinc-800 rounded-xl p-3">
             <div className="text-xs text-zinc-500 mb-1">Change</div>
             <div className={`text-xl font-bold ${stats.spikeDetected ? "text-red-400" : ""}`}>
-              {stats.increasePercent !== null ? `${stats.increasePercent > 0 ? "+" : ""}${stats.increasePercent}%` : "â€”"}
+              {stats.increasePercent !== null ? `${stats.increasePercent > 0 ? "+" : ""}${stats.increasePercent}%` : "—"}
             </div>
           </div>
         </div>
         {stats.spikeDetected && (
           <p className="text-xs text-red-400 mt-3">
-            âš ï¸ Volume spike &gt;10% â€” high injury risk. Reduce this week's remaining runs.
+            ⚠️ Volume spike &gt;10% — high injury risk. Reduce this week's remaining runs.
           </p>
         )}
       </div>
@@ -97,7 +97,7 @@ export default async function RunningPage() {
           <p className="text-xs text-zinc-500 mt-2">{pain.runningCorrelation}</p>
           {pain.avgScore >= 7 && (
             <p className="text-xs text-red-400 mt-2">
-              ðŸš« Average knee pain â‰¥ 7 â€” no running until this drops below 7.
+              🚫 Average knee pain ≥ 7 — no running until this drops below 7.
             </p>
           )}
         </div>
@@ -124,12 +124,12 @@ export default async function RunningPage() {
                     <span className={`text-sm font-medium ${typeColor[session.type] ?? ""}`}>
                       {typeLabel[session.type] ?? session.type}
                     </span>
-                    {session.completed && <span className="text-xs text-green-500">âœ“</span>}
+                    {session.completed && <span className="text-xs text-green-500">✓</span>}
                   </div>
                   <div className="text-xs text-zinc-500 mt-0.5">
                     Week {session.week}, Session {session.session}
-                    {session.target_distance_km ? ` Â· ${session.target_distance_km}km` : ""}
-                    {session.target_duration_min ? ` Â· ${session.target_duration_min}min` : ""}
+                    {session.target_distance_km ? ` · ${session.target_distance_km}km` : ""}
+                    {session.target_duration_min ? ` · ${session.target_duration_min}min` : ""}
                   </div>
                   {session.knee_screen_notes && (
                     <div className="text-xs text-zinc-600 mt-0.5">{session.knee_screen_notes}</div>

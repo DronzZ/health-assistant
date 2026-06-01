@@ -37,18 +37,18 @@ export default async function FitnessPage() {
           <div className="grid grid-cols-3 gap-3 text-center mb-3">
             <div className="bg-zinc-800 rounded-xl p-3">
               <div className="text-xs text-zinc-500 mb-1">Steps</div>
-              <div className="text-xl font-bold">{latest.steps?.toLocaleString() ?? "â€”"}</div>
+              <div className="text-xl font-bold">{latest.steps?.toLocaleString() ?? "—"}</div>
             </div>
             <div className="bg-zinc-800 rounded-xl p-3">
               <div className="text-xs text-zinc-500 mb-1">Body Battery</div>
               <div className={`text-xl font-bold ${(latest.body_battery_end ?? 100) < 25 ? "text-red-400" : (latest.body_battery_end ?? 0) > 75 ? "text-green-400" : ""}`}>
-                {latest.body_battery_end ?? "â€”"}%
+                {latest.body_battery_end ?? "—"}%
               </div>
             </div>
             <div className="bg-zinc-800 rounded-xl p-3">
               <div className="text-xs text-zinc-500 mb-1">Stress</div>
               <div className={`text-xl font-bold ${(latest.stress_avg ?? 0) > 50 ? "text-orange-400" : ""}`}>
-                {latest.stress_avg ?? "â€”"}
+                {latest.stress_avg ?? "—"}
               </div>
             </div>
           </div>
@@ -56,17 +56,17 @@ export default async function FitnessPage() {
           <div className="grid grid-cols-3 gap-3 text-center">
             <div className="bg-zinc-800 rounded-xl p-3">
               <div className="text-xs text-zinc-500 mb-1">Active kcal</div>
-              <div className="text-lg font-bold">{latest.calories_active ?? "â€”"}</div>
+              <div className="text-lg font-bold">{latest.calories_active ?? "—"}</div>
             </div>
             <div className="bg-zinc-800 rounded-xl p-3">
               <div className="text-xs text-zinc-500 mb-1">Recovery</div>
               <div className="text-lg font-bold">
-                {latest.recovery_time_hours ? `${latest.recovery_time_hours}h` : "â€”"}
+                {latest.recovery_time_hours ? `${latest.recovery_time_hours}h` : "—"}
               </div>
             </div>
             <div className="bg-zinc-800 rounded-xl p-3">
               <div className="text-xs text-zinc-500 mb-1">Training load</div>
-              <div className="text-lg font-bold">{latest.training_load ?? "â€”"}</div>
+              <div className="text-lg font-bold">{latest.training_load ?? "—"}</div>
             </div>
           </div>
         </div>
@@ -77,16 +77,16 @@ export default async function FitnessPage() {
         <div className="text-sm text-zinc-400 mb-3">30-day trends</div>
         <div className="grid grid-cols-3 gap-3 text-center">
           <div className="bg-zinc-800 rounded-xl p-3">
-            <div className="text-xs text-zinc-500 mb-1">VOâ‚‚ max</div>
-            <div className="text-2xl font-bold text-blue-400">{latestVo2 ?? "â€”"}</div>
+            <div className="text-xs text-zinc-500 mb-1">VO₂ max</div>
+            <div className="text-2xl font-bold text-blue-400">{latestVo2 ?? "—"}</div>
           </div>
           <div className="bg-zinc-800 rounded-xl p-3">
             <div className="text-xs text-zinc-500 mb-1">Resting HR</div>
-            <div className="text-2xl font-bold">{latestHR ?? "â€”"}<span className="text-sm text-zinc-500"> bpm</span></div>
+            <div className="text-2xl font-bold">{latestHR ?? "—"}<span className="text-sm text-zinc-500"> bpm</span></div>
           </div>
           <div className="bg-zinc-800 rounded-xl p-3">
             <div className="text-xs text-zinc-500 mb-1">Avg steps</div>
-            <div className="text-2xl font-bold">{avgSteps?.toLocaleString() ?? "â€”"}</div>
+            <div className="text-2xl font-bold">{avgSteps?.toLocaleString() ?? "—"}</div>
           </div>
         </div>
       </div>
@@ -104,8 +104,8 @@ export default async function FitnessPage() {
               <div key={r.date} className="flex justify-between px-4 py-2 text-sm">
                 <span className="text-zinc-400">{r.date}</span>
                 <div className="flex gap-3 text-xs items-center">
-                  <span>{r.steps?.toLocaleString() ?? "â€”"} steps</span>
-                  <span className="text-zinc-600">BB {r.body_battery_end ?? "â€”"}%</span>
+                  <span>{r.steps?.toLocaleString() ?? "—"} steps</span>
+                  <span className="text-zinc-600">BB {r.body_battery_end ?? "—"}%</span>
                   <span className="text-zinc-600">
                     {r.recovery_time_hours ? `${r.recovery_time_hours}h rec` : ""}
                   </span>

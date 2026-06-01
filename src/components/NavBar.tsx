@@ -1,16 +1,16 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV = [
-  { href: "/", label: "Today", icon: "🏠" },
-  { href: "/food", label: "Food", icon: "🍽️" },
-  { href: "/body", label: "Body", icon: "📊" },
-  { href: "/sleep", label: "Sleep", icon: "😴" },
-  { href: "/fitness", label: "Fitness", icon: "⚡" },
-  { href: "/workouts", label: "Lifts", icon: "🏋️" },
-  { href: "/running", label: "Run", icon: "🏃" },
+  { href: "/", label: "Today", icon: "??" },
+  { href: "/food", label: "Food", icon: "???" },
+  { href: "/body", label: "Body", icon: "??" },
+  { href: "/sleep", label: "Sleep", icon: "??" },
+  { href: "/fitness", label: "Fitness", icon: "?" },
+  { href: "/workouts", label: "Lifts", icon: "???" },
+  { href: "/running", label: "Run", icon: "??" },
 ];
 
 export default function NavBar() {
@@ -39,7 +39,7 @@ export default function NavBar() {
             path === "/progress" ? "bg-blue-600 text-white" : "text-zinc-400 hover:text-white hover:bg-zinc-800"
           }`}
         >
-          <span className="text-base">📸</span>
+          <span className="text-base">??</span>
           <span>Photos</span>
         </Link>
         <Link
@@ -48,7 +48,7 @@ export default function NavBar() {
             path === "/bloodwork" ? "bg-blue-600 text-white" : "text-zinc-400 hover:text-white hover:bg-zinc-800"
           }`}
         >
-          <span className="text-base">🩸</span>
+          <span className="text-base">??</span>
           <span>Blood</span>
         </Link>
         <Link
@@ -57,7 +57,7 @@ export default function NavBar() {
             path === "/meal-plan" ? "bg-blue-600 text-white" : "text-zinc-400 hover:text-white hover:bg-zinc-800"
           }`}
         >
-          <span className="text-base">📋</span>
+          <span className="text-base">??</span>
           <span>Plan</span>
         </Link>
       </div>

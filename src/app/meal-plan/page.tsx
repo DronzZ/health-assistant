@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 const SLOTS = ["breakfast", "lunch", "dinner", "snack"];
-const mealIcons: Record<string, string> = { breakfast: "ðŸŒ…", lunch: "â˜€ï¸", dinner: "ðŸŒ™", snack: "ðŸŽ" };
+const mealIcons: Record<string, string> = { breakfast: "🌅", lunch: "☀️", dinner: "🌙", snack: "🍎" };
 
 export default async function MealPlanPage() {
   const { data } = await db
@@ -68,7 +68,7 @@ export default async function MealPlanPage() {
                   )}
                 </div>
                 <span className="text-xs text-zinc-500">
-                  {totalCals > 0 ? `${totalCals} kcal Â· ${totalProtein}g pro` : ""}
+                  {totalCals > 0 ? `${totalCals} kcal · ${totalProtein}g pro` : ""}
                 </span>
               </div>
               <div className="divide-y divide-zinc-800">

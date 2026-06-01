@@ -34,7 +34,7 @@ export default async function BodyPage() {
       <div className="flex items-center justify-between pt-2">
         <h1 className="text-lg font-bold">Body</h1>
         {weightStats.alertHighLossRate && (
-          <span className="text-xs bg-red-900/50 text-red-400 px-2 py-0.5 rounded-full">âš ï¸ High loss rate</span>
+          <span className="text-xs bg-red-900/50 text-red-400 px-2 py-0.5 rounded-full">⚠️ High loss rate</span>
         )}
       </div>
 
@@ -45,25 +45,25 @@ export default async function BodyPage() {
           <div className="bg-zinc-800 rounded-xl p-3">
             <div className="text-xs text-zinc-500 mb-1">Latest</div>
             <div className="text-xl font-bold">
-              {weights[0]?.weight_kg ? `${weights[0].weight_kg}kg` : "â€”"}
+              {weights[0]?.weight_kg ? `${weights[0].weight_kg}kg` : "—"}
             </div>
           </div>
           <div className="bg-zinc-800 rounded-xl p-3">
             <div className="text-xs text-zinc-500 mb-1">7-day avg</div>
             <div className="text-xl font-bold">
-              {weightStats.rollingAvg7d ? `${weightStats.rollingAvg7d}kg` : "â€”"}
+              {weightStats.rollingAvg7d ? `${weightStats.rollingAvg7d}kg` : "—"}
             </div>
           </div>
           <div className="bg-zinc-800 rounded-xl p-3">
             <div className="text-xs text-zinc-500 mb-1">Rate/wk</div>
             <div className={`text-xl font-bold ${weightStats.alertHighLossRate ? "text-red-400" : ""}`}>
-              {weightStats.weeklyLossRate ? `${weightStats.weeklyLossRate}kg` : "â€”"}
+              {weightStats.weeklyLossRate ? `${weightStats.weeklyLossRate}kg` : "—"}
             </div>
           </div>
         </div>
         {weightStats.alertHighLossRate && (
           <p className="text-xs text-red-400 mt-3">
-            Losing more than 1% of body weight per week â€” muscle loss risk. Increase calories or reduce activity.
+            Losing more than 1% of body weight per week — muscle loss risk. Increase calories or reduce activity.
           </p>
         )}
       </div>
@@ -81,7 +81,7 @@ export default async function BodyPage() {
               <div key={w.date} className="flex justify-between px-4 py-2 text-sm">
                 <span className="text-zinc-400">{w.date}</span>
                 <div className="flex gap-4">
-                  <span>{w.weight_kg ? `${w.weight_kg}kg` : "â€”"}</span>
+                  <span>{w.weight_kg ? `${w.weight_kg}kg` : "—"}</span>
                   <span className="text-zinc-500 text-xs self-center">
                     {w.weight_7day_avg ? `avg ${w.weight_7day_avg}kg` : ""}
                   </span>
@@ -108,8 +108,8 @@ export default async function BodyPage() {
           </div>
         </div>
         <div className="text-xs text-zinc-600 mt-2">
-          Avg intake {deficit.dailyAvgIntake} kcal Â· avg TDEE {deficit.dailyAvgTDEE} kcal
-          {deficit.daysTracked < 7 && ` Â· only ${deficit.daysTracked}/7 days tracked`}
+          Avg intake {deficit.dailyAvgIntake} kcal · avg TDEE {deficit.dailyAvgTDEE} kcal
+          {deficit.daysTracked < 7 && ` · only ${deficit.daysTracked}/7 days tracked`}
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+﻿import Anthropic from "@anthropic-ai/sdk";
 import { MODELS } from "./model-router";
 import { db } from "./db";
 import { sendMessage } from "./telegram";
@@ -25,7 +25,7 @@ export async function generateWeeklySleepInsight(): Promise<void> {
     .order("date", { ascending: true });
 
   if (!sleepData?.length) {
-    await sendMessage("😴 No sleep data available for insight generation.");
+    await sendMessage("?? No sleep data available for insight generation.");
     return;
   }
 
@@ -39,7 +39,7 @@ export async function generateWeeklySleepInsight(): Promise<void> {
     sleepData.reduce((s, d) => s + (d.hrv_last_night ?? 0), 0) / sleepData.filter((d) => d.hrv_last_night).length
   );
 
-  const context = `SLEEP DATA — last 30 days (${sleepData.length} nights):
+  const context = `SLEEP DATA � last 30 days (${sleepData.length} nights):
 
 Averages:
 - Sleep score: ${avgScore}/100
@@ -67,7 +67,7 @@ ${(dailyData ?? [])
     system: `You are a sleep science expert analysing an athlete's sleep data. The user is an experienced lifter adding running, with chronic knee pain and poor recovery history.
 
 Give a personalised weekly sleep insight in 3 parts:
-1. Pattern identified (what the data shows — specific, honest)
+1. Pattern identified (what the data shows � specific, honest)
 2. Root cause hypothesis (what's likely driving this)
 3. One actionable fix (specific, measurable, implementable tonight)
 
@@ -80,5 +80,5 @@ Be direct. No fluff.`,
     .map((b) => (b as Anthropic.TextBlock).text)
     .join("\n");
 
-  await sendMessage(`😴 *Weekly Sleep Insight*\n\n${insight}`);
+  await sendMessage(`?? *Weekly Sleep Insight*\n\n${insight}`);
 }

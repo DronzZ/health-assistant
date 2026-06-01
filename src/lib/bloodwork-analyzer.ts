@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+﻿import Anthropic from "@anthropic-ai/sdk";
 import { MODELS } from "./model-router";
 import { db } from "./db";
 import { sendMessage } from "./telegram";
@@ -58,7 +58,7 @@ Return valid JSON only.`,
   try {
     parsed = JSON.parse(text.replace(/```json\n?|\n?```/g, "").trim());
   } catch {
-    await sendMessage("⚠️ Couldn't parse the bloodwork image. Try a clearer photo or screenshot.");
+    await sendMessage("?? Couldn't parse the bloodwork image. Try a clearer photo or screenshot.");
     return;
   }
 
@@ -80,21 +80,21 @@ Return valid JSON only.`,
   const suboptimal = markers.filter((m) => m.status === "suboptimal");
   const high = markers.filter((m) => m.status === "high");
 
-  let message = `🩸 *Bloodwork Analysis — ${today}*\n\n`;
+  let message = `?? *Bloodwork Analysis � ${today}*\n\n`;
   message += `${parsed.summary}\n\n`;
 
   if (deficient.length) {
-    message += `🔴 *Deficient:*\n${deficient.map((m) => `• ${m.marker}: ${m.value} ${m.unit} — ${m.recommendation || "supplement needed"}`).join("\n")}\n\n`;
+    message += `?? *Deficient:*\n${deficient.map((m) => `� ${m.marker}: ${m.value} ${m.unit} � ${m.recommendation || "supplement needed"}`).join("\n")}\n\n`;
   }
   if (suboptimal.length) {
-    message += `🟡 *Suboptimal:*\n${suboptimal.map((m) => `• ${m.marker}: ${m.value} ${m.unit} — ${m.recommendation || "monitor"}`).join("\n")}\n\n`;
+    message += `?? *Suboptimal:*\n${suboptimal.map((m) => `� ${m.marker}: ${m.value} ${m.unit} � ${m.recommendation || "monitor"}`).join("\n")}\n\n`;
   }
   if (high.length) {
-    message += `⚠️ *High:*\n${high.map((m) => `• ${m.marker}: ${m.value} ${m.unit} — ${m.recommendation || "investigate"}`).join("\n")}\n\n`;
+    message += `?? *High:*\n${high.map((m) => `� ${m.marker}: ${m.value} ${m.unit} � ${m.recommendation || "investigate"}`).join("\n")}\n\n`;
   }
 
   if (parsed.supplement_recommendations) {
-    message += `💊 *Supplement Plan:*\n${parsed.supplement_recommendations}`;
+    message += `?? *Supplement Plan:*\n${parsed.supplement_recommendations}`;
   }
 
   message += `\n\n_Always confirm with your doctor before acting on these recommendations._`;

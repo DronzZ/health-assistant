@@ -44,7 +44,7 @@ export default async function BloodworkPage() {
               <div key={e.id} className="flex justify-between text-sm">
                 <span className="text-zinc-300">{e.marker}</span>
                 <span className={`text-xs px-2 py-0.5 rounded-full ${statusColor[e.status] ?? ""}`}>
-                  {e.value} {e.unit} â€” {e.status}
+                  {e.value} {e.unit} — {e.status}
                 </span>
               </div>
             ))}

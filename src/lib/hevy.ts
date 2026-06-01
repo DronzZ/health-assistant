@@ -1,4 +1,4 @@
-import { db } from "./db";
+﻿import { db } from "./db";
 import { sendMessage } from "./telegram";
 
 const HEVY_API = "https://api.hevyapp.com/v1";
@@ -44,7 +44,7 @@ export async function syncWorkouts(): Promise<void> {
     }
   } catch (error: any) {
     console.error("Hevy sync failed:", error);
-    await sendMessage(`⚠️ Hevy sync failed: ${error.message ?? "unknown error"}`);
+    await sendMessage(`?? Hevy sync failed: ${error.message ?? "unknown error"}`);
     throw error;
   }
 }

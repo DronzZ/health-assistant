@@ -52,7 +52,7 @@ export default async function TodayPage() {
   const protein = proteinDist.totalProtein;
   const fiber = proteinDist.totalFiber;
 
-  const mealIcons: Record<string, string> = { breakfast: "ðŸŒ…", lunch: "â˜€ï¸", dinner: "ðŸŒ™", snack: "ðŸŽ" };
+  const mealIcons: Record<string, string> = { breakfast: "🌅", lunch: "☀️", dinner: "🌙", snack: "🍎" };
 
   return (
     <div className="space-y-4">
@@ -66,15 +66,15 @@ export default async function TodayPage() {
         <div className="flex justify-between items-start mb-3">
           <span className="text-sm font-medium text-zinc-300">Weight</span>
           {weightStats.alertHighLossRate && (
-            <span className="text-xs bg-red-900/50 text-red-400 px-2 py-0.5 rounded-full">âš ï¸ Fast loss</span>
+            <span className="text-xs bg-red-900/50 text-red-400 px-2 py-0.5 rounded-full">⚠️ Fast loss</span>
           )}
         </div>
         <div className="grid grid-cols-3 gap-3">
-          <StatCard label="Today" value={daily?.weight_kg ? `${daily.weight_kg}kg` : "â€”"} />
-          <StatCard label="7-day avg" value={weightStats.rollingAvg7d ? `${weightStats.rollingAvg7d}kg` : "â€”"} />
+          <StatCard label="Today" value={daily?.weight_kg ? `${daily.weight_kg}kg` : "—"} />
+          <StatCard label="7-day avg" value={weightStats.rollingAvg7d ? `${weightStats.rollingAvg7d}kg` : "—"} />
           <StatCard
             label="Weekly"
-            value={weightStats.weeklyLossRate ? `${weightStats.weeklyLossRate}kg` : "â€”"}
+            value={weightStats.weeklyLossRate ? `${weightStats.weeklyLossRate}kg` : "—"}
             sub="loss/wk"
           />
         </div>
@@ -126,7 +126,7 @@ export default async function TodayPage() {
       {/* Water */}
       <div className="bg-zinc-900 rounded-xl p-4 space-y-2">
         <div className="flex justify-between">
-          <span className="text-sm font-medium text-zinc-300">ðŸ’§ Water</span>
+          <span className="text-sm font-medium text-zinc-300">💧 Water</span>
           <span className="text-sm font-bold">
             {(water / 1000).toFixed(1)}L <span className="text-zinc-500 font-normal">/ {(waterTarget / 1000).toFixed(1)}L</span>
           </span>
@@ -140,8 +140,8 @@ export default async function TodayPage() {
           <div className="text-sm font-medium text-zinc-300 mb-3">Garmin</div>
           <div className="grid grid-cols-3 gap-3">
             <StatCard label="Steps" value={steps.toLocaleString()} sub={`/ ${stepsTarget.toLocaleString()}`} />
-            <StatCard label="Body Battery" value={garmin.body_battery_end ? `${garmin.body_battery_end}%` : "â€”"} />
-            <StatCard label="Sleep" value={garmin.sleep_score ? `${garmin.sleep_score}/100` : "â€”"} />
+            <StatCard label="Body Battery" value={garmin.body_battery_end ? `${garmin.body_battery_end}%` : "—"} />
+            <StatCard label="Sleep" value={garmin.sleep_score ? `${garmin.sleep_score}/100` : "—"} />
           </div>
         </div>
       )}
@@ -178,8 +178,8 @@ export default async function TodayPage() {
         <div className="text-sm font-medium text-zinc-300 mb-1">Weekly Deficit</div>
         <div className="text-2xl font-bold text-blue-400">{deficit.weeklyDeficit.toLocaleString()} kcal</div>
         <div className="text-xs text-zinc-500 mt-1">
-          ~{deficit.projectedFatLossGrams}g fat Â· avg {deficit.dailyAvgIntake} in vs {deficit.dailyAvgTDEE} out
-          {deficit.daysTracked < 7 && ` Â· ${deficit.daysTracked}/7 days tracked`}
+          ~{deficit.projectedFatLossGrams}g fat · avg {deficit.dailyAvgIntake} in vs {deficit.dailyAvgTDEE} out
+          {deficit.daysTracked < 7 && ` · ${deficit.daysTracked}/7 days tracked`}
         </div>
       </div>
     </div>

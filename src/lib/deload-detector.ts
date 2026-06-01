@@ -1,4 +1,4 @@
-import { db } from "./db";
+﻿import { db } from "./db";
 import { sendMessage } from "./telegram";
 
 export interface DeloadStatus {
@@ -46,9 +46,9 @@ export async function checkDeload(): Promise<DeloadStatus> {
 
   const needed = allHigh || consistently_elevated;
   const reason = consistently_elevated
-    ? `4-week avg training load is ${Math.round(avg)} — deload recommended`
+    ? `4-week avg training load is ${Math.round(avg)} � deload recommended`
     : allHigh
-    ? `4 consecutive high-load weeks (all > 300 load) — deload recommended`
+    ? `4 consecutive high-load weeks (all > 300 load) � deload recommended`
     : "Training load within normal range";
 
   return { needed, reason, weeklyLoad: weeklyTotals };
@@ -58,7 +58,7 @@ export async function alertDeloadIfNeeded(): Promise<void> {
   const status = await checkDeload();
   if (status.needed) {
     await sendMessage(
-      `⚠️ *Deload Signal*\n\n${status.reason}\n\nYour body is asking for a recovery week. Drop volume by 40%, keep intensity, focus on sleep.`
+      `?? *Deload Signal*\n\n${status.reason}\n\nYour body is asking for a recovery week. Drop volume by 40%, keep intensity, focus on sleep.`
     );
   }
 }

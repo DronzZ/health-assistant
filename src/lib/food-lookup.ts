@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+﻿import Anthropic from "@anthropic-ai/sdk";
 import { MODELS } from "./model-router";
 
 const client = new Anthropic();
@@ -29,7 +29,7 @@ export async function lookupFood(query: string): Promise<FoodMacros[]> {
 }
 
 function parseMultipleItems(query: string): { name: string; grams: number }[] {
-  // "200g chicken breast, 150g rice" → [{name: "chicken breast", grams: 200}, ...]
+  // "200g chicken breast, 150g rice" ? [{name: "chicken breast", grams: 200}, ...]
   const parts = query.split(/,\s*/);
   return parts.map((part) => {
     const match = part.match(/^(\d+(?:\.\d+)?)\s*g?\s+(.+)$/i) ||
@@ -120,6 +120,6 @@ async function estimateWithClaude(name: string, grams: number): Promise<FoodMacr
     fat_g: Math.round((parsed.fat_per_100g ?? 0) * multiplier * 10) / 10,
     fiber_g: Math.round((parsed.fiber_per_100g ?? 0) * multiplier * 10) / 10,
     source: "estimated",
-    warning: "⚠️ Macros estimated — verify with a label if accuracy matters",
+    warning: "?? Macros estimated � verify with a label if accuracy matters",
   };
 }

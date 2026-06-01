@@ -1,4 +1,4 @@
-import { db } from "./db";
+﻿import { db } from "./db";
 import { sendMessage } from "./telegram";
 
 const KEY_LIFTS = ["squat", "bench", "deadlift", "overhead press", "barbell row"];
@@ -61,10 +61,10 @@ export async function alertMuscleLossIfNeeded(): Promise<void> {
   if (!alerts.length) return;
 
   const lines = alerts.map(
-    (a) => `• ${a.exercise}: −${a.dropPct}% (${a.recentAvg} vs ${a.baselineAvg} e1RM)`
+    (a) => `� ${a.exercise}: -${a.dropPct}% (${a.recentAvg} vs ${a.baselineAvg} e1RM)`
   );
 
   await sendMessage(
-    `🚨 *Declining Performance Alert*\n\nLift performance dropped > 5% in the last 2 weeks — possible muscle loss:\n\n${lines.join("\n")}\n\nCheck: calories too low? Protein under target? Recovery poor? Act now before strength losses compound.`
+    `?? *Declining Performance Alert*\n\nLift performance dropped > 5% in the last 2 weeks � possible muscle loss:\n\n${lines.join("\n")}\n\nCheck: calories too low? Protein under target? Recovery poor? Act now before strength losses compound.`
   );
 }

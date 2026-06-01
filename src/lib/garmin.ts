@@ -1,4 +1,4 @@
-import { GarminConnect } from "garmin-connect";
+﻿import { GarminConnect } from "garmin-connect";
 import { db } from "./db";
 import { sendMessage } from "./telegram";
 
@@ -71,7 +71,7 @@ export async function syncDailyStats(): Promise<void> {
     }, { onConflict: "date" });
   } catch (error: any) {
     console.error("Garmin stats sync failed:", error);
-    await sendMessage(`⚠️ Garmin stats sync failed: ${error.message ?? "unknown error"}`);
+    await sendMessage(`?? Garmin stats sync failed: ${error.message ?? "unknown error"}`);
     throw error;
   }
 }
@@ -101,7 +101,7 @@ export async function syncSleep(): Promise<void> {
     }, { onConflict: "date" });
   } catch (error: any) {
     console.error("Garmin sleep sync failed:", error);
-    await sendMessage(`⚠️ Garmin sleep sync failed: ${error.message ?? "unknown error"}`);
+    await sendMessage(`?? Garmin sleep sync failed: ${error.message ?? "unknown error"}`);
     throw error;
   }
 }
@@ -141,7 +141,7 @@ export async function syncActivities(): Promise<void> {
     });
   } catch (error: any) {
     console.error("Garmin activities sync failed:", error);
-    await sendMessage(`⚠️ Garmin activities sync failed: ${error.message ?? "unknown error"}`);
+    await sendMessage(`?? Garmin activities sync failed: ${error.message ?? "unknown error"}`);
     throw error;
   }
 }

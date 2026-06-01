@@ -1,4 +1,4 @@
-import { db } from "./db";
+﻿import { db } from "./db";
 import { sendMessage } from "./telegram";
 
 export interface RunningWeekStats {
@@ -53,7 +53,7 @@ export async function checkRunningSpike(): Promise<void> {
 
   if (stats.spikeDetected) {
     await sendMessage(
-      `🏃 *Running Volume Spike Detected*\n\nThis week: ${stats.thisWeekKm}km vs last week: ${stats.lastWeekKm}km (+${stats.increasePercent}%)\n\n10% weekly mileage increase is the max for injury prevention — especially with your knee history. Dial it back.`
+      `?? *Running Volume Spike Detected*\n\nThis week: ${stats.thisWeekKm}km vs last week: ${stats.lastWeekKm}km (+${stats.increasePercent}%)\n\n10% weekly mileage increase is the max for injury prevention � especially with your knee history. Dial it back.`
     );
   }
 }
@@ -84,5 +84,5 @@ export async function getRunningPlanStatus(): Promise<string> {
     walk: "Walk",
   };
 
-  return `Running plan: ${completed}/${sessions.length} sessions done\nNext: Week ${next.week}, Session ${next.session} — ${typeLabel[next.type] ?? next.type}${next.target_distance_km ? ` (${next.target_distance_km}km)` : ""}${next.target_duration_min ? ` / ${next.target_duration_min}min` : ""}`;
+  return `Running plan: ${completed}/${sessions.length} sessions done\nNext: Week ${next.week}, Session ${next.session} � ${typeLabel[next.type] ?? next.type}${next.target_distance_km ? ` (${next.target_distance_km}km)` : ""}${next.target_duration_min ? ` / ${next.target_duration_min}min` : ""}`;
 }

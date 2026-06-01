@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+﻿import Anthropic from "@anthropic-ai/sdk";
 import { MODELS } from "./model-router";
 import { db } from "./db";
 import { sendMessage } from "./telegram";
@@ -50,7 +50,7 @@ ${lowProteinMeals.length ? `- Low protein meals (< 25g): ${lowProteinMeals.join(
 WEIGHT:
 - Today: ${daily?.weight_kg ?? "not logged"} kg
 - 7-day avg: ${weightStats.rollingAvg7d ?? "insufficient data"} kg
-- Weekly loss rate: ${weightStats.weeklyLossRate ?? "?"}kg/wk${weightStats.alertHighLossRate ? " ⚠️ ABOVE 1% OF BODYWEIGHT — MUSCLE LOSS RISK" : ""}
+- Weekly loss rate: ${weightStats.weeklyLossRate ?? "?"}kg/wk${weightStats.alertHighLossRate ? " ?? ABOVE 1% OF BODYWEIGHT � MUSCLE LOSS RISK" : ""}
 
 RECOVERY:
 - Sleep score: ${garmin?.sleep_score ?? "no data"}
@@ -71,12 +71,12 @@ ${workouts.length ? `Exercises today: ${[...new Set(workouts.map((w: any) => w.e
     max_tokens: 700,
     system: `You are a ruthless personal trainer giving a daily check-in. The user is an experienced lifter adding running, with chronic knee pain and poor recovery.
 
-STRICT FORMAT — 3 parts only:
-1. ✅ What went right (1-2 sentences max, genuinely earned)
-2. ❌ What missed (direct, hard, no sugarcoating — specific numbers)
-3. 🎯 One action for tomorrow (concrete and measurable)
+STRICT FORMAT � 3 parts only:
+1. ? What went right (1-2 sentences max, genuinely earned)
+2. ? What missed (direct, hard, no sugarcoating � specific numbers)
+3. ?? One action for tomorrow (concrete and measurable)
 
-If weight loss rate exceeds 1%/week, it MUST be addressed — muscle loss risk.
+If weight loss rate exceeds 1%/week, it MUST be addressed � muscle loss risk.
 If protein was low in any meal, call it out.
 If water target was missed, call it out.
 If no weight was logged, flag it.`,
@@ -88,7 +88,7 @@ If no weight was logged, flag it.`,
     .map((b) => (b as Anthropic.TextBlock).text)
     .join("\n");
 
-  await sendMessage(`💪 *Daily Check-in — ${today}*\n\n${reply}`);
+  await sendMessage(`?? *Daily Check-in � ${today}*\n\n${reply}`);
 }
 
 export async function checkWater(): Promise<void> {
@@ -99,7 +99,7 @@ export async function checkWater(): Promise<void> {
   const target = targets?.water_ml ?? 2500;
 
   if (water < 500) {
-    await sendMessage(`💧 *Water check* — You've only had ${water}ml so far. Target is ${target}ml. Drink up.`);
+    await sendMessage(`?? *Water check* � You've only had ${water}ml so far. Target is ${target}ml. Drink up.`);
   }
 }
 
@@ -107,6 +107,6 @@ export async function checkFood(): Promise<void> {
   const today = new Date().toISOString().split("T")[0];
   const { data } = await db.from("food_entries").select("id").eq("date", today).limit(1);
   if (!data?.length) {
-    await sendMessage("🍽️ Nothing logged today. Log your food now — the data only works if it's accurate.");
+    await sendMessage("??? Nothing logged today. Log your food now � the data only works if it's accurate.");
   }
 }

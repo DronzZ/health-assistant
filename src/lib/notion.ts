@@ -1,4 +1,4 @@
-import { db } from "./db";
+﻿import { db } from "./db";
 import { sendMessage } from "./telegram";
 
 const NOTION_API = "https://api.notion.com/v1";
@@ -117,7 +117,7 @@ export async function syncToNotion(): Promise<void> {
     }
 
   } catch (err: any) {
-    await sendMessage(`⚠️ Notion sync failed: ${err.message}`);
+    await sendMessage(`?? Notion sync failed: ${err.message}`);
     throw err;
   }
 }

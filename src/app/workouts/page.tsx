@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { getProgressiveOverloadStatus } from "@/lib/overload-tracker";
 
-const trendIcon = { improving: "â†‘", plateau: "â†’", declining: "â†“" };
+const trendIcon = { improving: "↑", plateau: "→", declining: "↓" };
 const trendColor = { improving: "text-green-400", plateau: "text-yellow-400", declining: "text-red-400" };
 
 export default async function WorkoutsPage() {
@@ -23,7 +23,7 @@ export default async function WorkoutsPage() {
 
   const workouts = workoutsRes.data ?? [];
 
-  // Group by date â†’ exercise
+  // Group by date → exercise
   const byDate: Record<string, Record<string, { reps: number; weight_kg: number }[]>> = {};
   for (const w of workouts) {
     byDate[w.date] = byDate[w.date] ?? {};
@@ -62,12 +62,12 @@ export default async function WorkoutsPage() {
       {/* Declining alert */}
       {overload.some((o) => o.trend === "declining") && (
         <div className="bg-red-900/30 border border-red-800 rounded-xl p-3 text-sm text-red-400">
-          âš ï¸ Declining performance on{" "}
+          ⚠️ Declining performance on{" "}
           {overload
             .filter((o) => o.trend === "declining")
             .map((o) => o.exercise)
             .join(", ")}{" "}
-          â€” check protein and calorie targets.
+          — check protein and calorie targets.
         </div>
       )}
 
@@ -87,7 +87,7 @@ export default async function WorkoutsPage() {
                 <div key={exercise} className="px-4 py-3">
                   <div className="text-sm font-medium capitalize mb-1">{exercise}</div>
                   <div className="text-xs text-zinc-500">
-                    {sets.map((s, i) => `${s.weight_kg}kg Ã— ${s.reps}`).join(" Â· ")}
+                    {sets.map((s, i) => `${s.weight_kg}kg × ${s.reps}`).join(" · ")}
                   </div>
                 </div>
               ))}

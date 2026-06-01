@@ -57,7 +57,7 @@ export default async function ProgressPage() {
       )}
 
       <p className="text-xs text-zinc-600 text-center">
-        Always send progress photos as files (ðŸ“Ž), not compressed images, for best analysis quality.
+        Always send progress photos as files (📎), not compressed images, for best analysis quality.
       </p>
     </div>
   );

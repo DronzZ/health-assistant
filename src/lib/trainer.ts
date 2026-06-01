@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+﻿import Anthropic from "@anthropic-ai/sdk";
 import { db } from "./db";
 import { getModel, routeMessage } from "./model-router";
 import { sendMessage } from "./telegram";
@@ -103,7 +103,7 @@ async function buildContext(): Promise<string> {
 - Weight: ${daily?.weight_kg ?? "not logged"} kg
 - Readiness: energy ${daily?.morning_energy ?? "?"}/10, soreness ${daily?.morning_soreness ?? "?"}/10, knee pain ${daily?.morning_knee_pain ?? "?"}/10, mood ${daily?.morning_mood ?? "?"}/10
 - Supplements: ${daily?.supplements?.join(", ") || "none logged"}
-${pains.length ? `- Pain log: ${pains.map((p: any) => `${p.pain_score}/10 (${p.location || "unspecified"}${p.activity_context ? " — " + p.activity_context : ""})`).join("; ")}` : ""}
+${pains.length ? `- Pain log: ${pains.map((p: any) => `${p.pain_score}/10 (${p.location || "unspecified"}${p.activity_context ? " � " + p.activity_context : ""})`).join("; ")}` : ""}
 ${garmin ? `- Steps: ${garmin.steps ?? "?"} | Body Battery: ${garmin.body_battery_end ?? "?"} | Recovery time: ${garmin.recovery_time_hours ?? "?"}h | Sleep score: ${garmin.sleep_score ?? "?"}` : "- Garmin: not synced yet"}
 ${workouts.length ? `- Today's workouts: ${[...new Set(workouts.map((w: any) => w.exercise))].join(", ")}` : "- No workouts logged today"}
 ${food.length ? `- Food logged: ${food.map((f: any) => `${f.name} (${f.calories}kcal, ${f.protein_g}g protein)`).join("; ")}` : "- No food logged yet"}`;
@@ -182,19 +182,19 @@ const SYSTEM_PROMPT = `You are a ruthless, knowledgeable personal trainer and he
 USER PROFILE:
 - Experienced lifter, years of bodybuilder-coached training
 - Goal: lose fat while maintaining/building muscle
-- Starting running alongside lifting — needs smart scheduling
-- Chronic knee pain — you NEVER suggest running when knee pain ≥ 7/10
-- Poor recovery history — you actively monitor Body Battery and HRV
+- Starting running alongside lifting � needs smart scheduling
+- Chronic knee pain � you NEVER suggest running when knee pain = 7/10
+- Poor recovery history � you actively monitor Body Battery and HRV
 
 YOUR STYLE:
 - Direct and hard. No fluff, no sugarcoating.
 - Acknowledge what went well briefly, then call out what was missed.
 - Give one specific, actionable instruction for what to do next.
 - If the user can log something, use a logging tool.
-- If macros were estimated, always mention that with a ⚠️.
+- If macros were estimated, always mention that with a ??.
 
 CRITICAL RULES:
-- Knee pain ≥ 7: no running suggestion, period.
+- Knee pain = 7: no running suggestion, period.
 - Protein < 25g per meal on training days: call it out.
 - Weight loss > 1%/week: alert muscle loss risk immediately.`;
 

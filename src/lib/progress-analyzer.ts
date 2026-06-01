@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+﻿import Anthropic from "@anthropic-ai/sdk";
 import { MODELS } from "./model-router";
 import { db } from "./db";
 import { uploadPhoto, getSignedUrl } from "./signed-url";
@@ -87,5 +87,5 @@ export async function analyzeProgressPhoto(
     file_size_kb: fileSizeKb,
   });
 
-  await sendMessage(`📸 *Progress Photo — ${today}*\n\n${analysis}`);
+  await sendMessage(`?? *Progress Photo � ${today}*\n\n${analysis}`);
 }

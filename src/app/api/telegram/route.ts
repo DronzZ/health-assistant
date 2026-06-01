@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { waitUntil } from "@vercel/functions";
 import {
   isAllowedChat,
@@ -17,7 +17,7 @@ import { db } from "@/lib/db";
 import { lookupFood } from "@/lib/food-lookup";
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  // Respond immediately — Telegram requires a response within 5 seconds
+  // Respond immediately � Telegram requires a response within 5 seconds
   const body = await req.json() as TelegramUpdate;
 
   waitUntil(processUpdate(body));
@@ -41,7 +41,7 @@ async function processUpdate(update: TelegramUpdate): Promise<void> {
     }
   } catch (error) {
     console.error("Error processing Telegram message:", error);
-    await sendMessage("⚠️ Something went wrong processing your message. Try again.");
+    await sendMessage("?? Something went wrong processing your message. Try again.");
   }
 }
 
@@ -52,7 +52,7 @@ async function handleMediaMessage(message: TelegramMessage): Promise<void> {
   if (caption.includes("/progress") || caption.includes("progress")) {
     if (isCompressedPhoto(message)) {
       await sendMessage(
-        "📎 Please resend this as a *file/document*, not as a photo.\n\nIn Telegram: tap the 📎 paperclip → *File* → select your photo.\n\nThis keeps full quality for analysis."
+        "?? Please resend this as a *file/document*, not as a photo.\n\nIn Telegram: tap the ?? paperclip ? *File* ? select your photo.\n\nThis keeps full quality for analysis."
       );
       return;
     }
@@ -71,7 +71,7 @@ async function handleMediaMessage(message: TelegramMessage): Promise<void> {
     const fileId = message.document?.file_id ?? message.photo?.slice(-1)[0]?.file_id;
     if (fileId) {
       const mimeType = message.document?.mime_type ?? "image/jpeg";
-      await sendMessage("🔬 Analysing your bloodwork with Opus... this takes a moment.");
+      await sendMessage("?? Analysing your bloodwork with Opus... this takes a moment.");
       const base64 = await downloadFileAsBase64(fileId);
       await analyzeBloodwork(base64, mimeType);
     }
@@ -100,15 +100,15 @@ async function handleMediaMessage(message: TelegramMessage): Promise<void> {
         source: "photo_label",
       });
       await sendMessage(
-        `✅ Logged (label scan): *${macros.name}* — ${macros.grams}g\n` +
-        `• ${macros.calories} kcal | ${macros.protein_g}g protein | ${macros.carbs_g}g carbs | ${macros.fat_g}g fat | ${macros.fiber_g}g fiber`
+        `? Logged (label scan): *${macros.name}* � ${macros.grams}g\n` +
+        `� ${macros.calories} kcal | ${macros.protein_g}g protein | ${macros.carbs_g}g carbs | ${macros.fat_g}g fat | ${macros.fiber_g}g fiber`
       );
     }
     return;
   }
 
   // Unrecognised photo
-  await sendMessage("Photo received. Add a caption to tell me what this is:\n• `200g` (nutrition label)\n• `/progress` (body photo — send as file)\n• `blood results` (bloodwork)");
+  await sendMessage("Photo received. Add a caption to tell me what this is:\n� `200g` (nutrition label)\n� `/progress` (body photo � send as file)\n� `blood results` (bloodwork)");
 }
 
 async function handleTextMessage(message: TelegramMessage): Promise<void> {
@@ -125,7 +125,7 @@ async function handleTextMessage(message: TelegramMessage): Promise<void> {
       const ml = Math.round(litres * 1000);
       const { data } = await db.from("daily_logs").select("water_ml").eq("date", today).single();
       await db.from("daily_logs").update({ water_ml: (data?.water_ml ?? 0) + ml }).eq("date", today);
-      await sendMessage(`💧 Logged ${litres}L water. Total today: ${((data?.water_ml ?? 0) + ml) / 1000}L`);
+      await sendMessage(`?? Logged ${litres}L water. Total today: ${((data?.water_ml ?? 0) + ml) / 1000}L`);
       return;
     }
   }
@@ -134,7 +134,7 @@ async function handleTextMessage(message: TelegramMessage): Promise<void> {
     const kg = parseFloat(text.replace("/weight ", ""));
     if (!isNaN(kg)) {
       await db.from("daily_logs").update({ weight_kg: kg }).eq("date", today);
-      await sendMessage(`⚖️ Weight logged: ${kg} kg`);
+      await sendMessage(`?? Weight logged: ${kg} kg`);
       return;
     }
   }
@@ -148,8 +148,8 @@ async function handleTextMessage(message: TelegramMessage): Promise<void> {
       morning_knee_pain: knee_pain ?? null,
       morning_mood: mood ?? null,
     }).eq("date", today);
-    const kneeWarning = knee_pain >= 7 ? "\n⚠️ Knee pain at 7+. No running today." : "";
-    await sendMessage(`✅ Readiness logged: energy ${energy}/10, soreness ${soreness}/10, knee ${knee_pain}/10, mood ${mood}/10${kneeWarning}`);
+    const kneeWarning = knee_pain >= 7 ? "\n?? Knee pain at 7+. No running today." : "";
+    await sendMessage(`? Readiness logged: energy ${energy}/10, soreness ${soreness}/10, knee ${knee_pain}/10, mood ${mood}/10${kneeWarning}`);
     return;
   }
 
@@ -158,7 +158,7 @@ async function handleTextMessage(message: TelegramMessage): Promise<void> {
     const { data } = await db.from("daily_logs").select("supplements").eq("date", today).single();
     const merged = [...new Set([...(data?.supplements ?? []), ...sups])];
     await db.from("daily_logs").update({ supplements: merged }).eq("date", today);
-    await sendMessage(`💊 Supplements logged: ${sups.join(", ")}`);
+    await sendMessage(`?? Supplements logged: ${sups.join(", ")}`);
     return;
   }
 
@@ -180,7 +180,7 @@ async function handleTextMessage(message: TelegramMessage): Promise<void> {
       });
     }
     const lines = results.map(
-      (r) => `${r.warning ? r.warning + "\n" : ""}✅ *${r.name}* (${r.grams}g): ${r.calories}kcal | ${r.protein_g}g protein | ${r.fiber_g}g fiber`
+      (r) => `${r.warning ? r.warning + "\n" : ""}? *${r.name}* (${r.grams}g): ${r.calories}kcal | ${r.protein_g}g protein | ${r.fiber_g}g fiber`
     );
     await sendMessage(lines.join("\n\n"));
     return;
@@ -200,23 +200,23 @@ async function handleTextMessage(message: TelegramMessage): Promise<void> {
     const totalFiber = food.reduce((s: number, f: any) => s + f.fiber_g, 0);
 
     await sendMessage(
-      `📊 *Today — ${today}*\n\n` +
-      `💧 Water: ${daily?.water_ml ?? 0}ml\n` +
-      `⚖️ Weight: ${daily?.weight_kg ?? "not logged"} kg\n` +
-      `🔥 Calories: ${Math.round(totalCals)} kcal\n` +
-      `🥩 Protein: ${Math.round(totalProtein)}g\n` +
-      `🌾 Fiber: ${Math.round(totalFiber)}g\n` +
-      `😴 Sleep score: ${garmin?.sleep_score ?? "no data"}\n` +
-      `🏃 Steps: ${garmin?.steps ?? "no data"}\n` +
-      `🔋 Body Battery: ${garmin?.body_battery_end ?? "no data"}\n` +
-      `💊 Supplements: ${daily?.supplements?.join(", ") || "none"}`
+      `?? *Today � ${today}*\n\n` +
+      `?? Water: ${daily?.water_ml ?? 0}ml\n` +
+      `?? Weight: ${daily?.weight_kg ?? "not logged"} kg\n` +
+      `?? Calories: ${Math.round(totalCals)} kcal\n` +
+      `?? Protein: ${Math.round(totalProtein)}g\n` +
+      `?? Fiber: ${Math.round(totalFiber)}g\n` +
+      `?? Sleep score: ${garmin?.sleep_score ?? "no data"}\n` +
+      `?? Steps: ${garmin?.steps ?? "no data"}\n` +
+      `?? Body Battery: ${garmin?.body_battery_end ?? "no data"}\n` +
+      `?? Supplements: ${daily?.supplements?.join(", ") || "none"}`
     );
     return;
   }
 
   if (text === "/measure") {
     await sendMessage(
-      "📏 *Monthly measurements* — reply with your values:\n\n" +
+      "?? *Monthly measurements* � reply with your values:\n\n" +
       "Format: `waist hips chest left-arm right-arm left-thigh right-thigh` (all in cm)\n\n" +
       "Example: `82 95 100 35 35 58 58`"
     );
@@ -228,10 +228,10 @@ async function handleTextMessage(message: TelegramMessage): Promise<void> {
   if (nums.length === 7 && nums.every((n) => n > 0 && n < 200)) {
     const [waist, hips, chest, left_arm, right_arm, left_thigh, right_thigh] = nums;
     await db.from("body_measurements").insert({ date: today, waist_cm: waist, hips_cm: hips, chest_cm: chest, left_arm_cm: left_arm, right_arm_cm: right_arm, left_thigh_cm: left_thigh, right_thigh_cm: right_thigh });
-    await sendMessage(`📏 Measurements saved:\nWaist: ${waist}cm | Hips: ${hips}cm | Chest: ${chest}cm\nArms: ${left_arm}/${right_arm}cm | Thighs: ${left_thigh}/${right_thigh}cm`);
+    await sendMessage(`?? Measurements saved:\nWaist: ${waist}cm | Hips: ${hips}cm | Chest: ${chest}cm\nArms: ${left_arm}/${right_arm}cm | Thighs: ${left_thigh}/${right_thigh}cm`);
     return;
   }
 
-  // Everything else → conversational trainer
+  // Everything else ? conversational trainer
   await handleConversation(text);
 }

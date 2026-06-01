@@ -5,10 +5,10 @@ import { db } from "@/lib/db";
 const sourceLabel: Record<string, { text: string; color: string }> = {
   photo_label: { text: "label scan", color: "text-green-400" },
   database: { text: "database", color: "text-blue-400" },
-  estimated: { text: "estimated âš ï¸", color: "text-orange-400" },
+  estimated: { text: "estimated ⚠️", color: "text-orange-400" },
 };
 
-const mealIcons: Record<string, string> = { breakfast: "ðŸŒ…", lunch: "â˜€ï¸", dinner: "ðŸŒ™", snack: "ðŸŽ" };
+const mealIcons: Record<string, string> = { breakfast: "🌅", lunch: "☀️", dinner: "🌙", snack: "🍎" };
 
 export default async function FoodPage() {
   const today = new Date().toISOString().split("T")[0];
@@ -71,7 +71,7 @@ export default async function FoodPage() {
                 {mealIcons[slot]} {slot}
               </span>
               <span className="text-xs text-zinc-500">
-                {slotCals} kcal Â· {slotProtein}g pro Â· {slotFiber}g fiber
+                {slotCals} kcal · {slotProtein}g pro · {slotFiber}g fiber
               </span>
             </div>
             {slotEntries.length === 0 ? (
@@ -86,9 +86,9 @@ export default async function FoodPage() {
                         <div>
                           <div className="text-sm font-medium">{f.name}</div>
                           <div className="text-xs text-zinc-500 mt-0.5">
-                            {f.grams_eaten ? `${f.grams_eaten}g Â· ` : ""}
-                            {Math.round(f.calories)} kcal Â· {Math.round(f.protein_g)}g pro
-                            {f.fiber_g ? ` Â· ${Math.round(f.fiber_g)}g fiber` : ""}
+                            {f.grams_eaten ? `${f.grams_eaten}g · ` : ""}
+                            {Math.round(f.calories)} kcal · {Math.round(f.protein_g)}g pro
+                            {f.fiber_g ? ` · ${Math.round(f.fiber_g)}g fiber` : ""}
                           </div>
                         </div>
                         <span className={`text-xs mt-0.5 ${src.color}`}>{src.text}</span>

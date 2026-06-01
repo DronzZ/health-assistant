@@ -1,4 +1,4 @@
-import { db } from "./db";
+﻿import { db } from "./db";
 import { sendMessage } from "./telegram";
 
 export async function checkTDEERecalibration(): Promise<void> {
@@ -23,7 +23,7 @@ export async function checkTDEERecalibration(): Promise<void> {
 
   if (drop >= 4.5) {
     await sendMessage(
-      `📊 *TDEE Recalibration Due*\n\nYou've lost ${Math.round(drop * 10) / 10}kg since your last calibration (${targets.last_tdee_recalc_date}).\n\nYour metabolic rate has dropped. Current calorie target (${targets.calorie_target} kcal) may now be a smaller deficit than intended — or could be causing an unintended surplus.\n\nReply: "recalculate my TDEE" and I'll walk you through it.`
+      `?? *TDEE Recalibration Due*\n\nYou've lost ${Math.round(drop * 10) / 10}kg since your last calibration (${targets.last_tdee_recalc_date}).\n\nYour metabolic rate has dropped. Current calorie target (${targets.calorie_target} kcal) may now be a smaller deficit than intended � or could be causing an unintended surplus.\n\nReply: "recalculate my TDEE" and I'll walk you through it.`
     );
   }
 }
