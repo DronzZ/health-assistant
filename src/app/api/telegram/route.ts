@@ -214,6 +214,33 @@ async function handleTextMessage(message: TelegramMessage): Promise<void> {
     return;
   }
 
+  if (text.startsWith("/workout ")) {
+    const input = text.slice("/workout ".length);
+    const entries = input.split(",").map((s) => s.trim()).filter(Boolean);
+    const rows: { date: string; exercise: string; set_number: number; reps: number; weight_kg: number }[] = [];
+    const summary: string[] = [];
+
+    for (const entry of entries) {
+      const match = entry.match(/^(.+?)\s+(\d+)x(\d+)\s+([\d.]+)(?:kg)?$/i);
+      if (!match) {
+        await sendMessage(`Kon niet parsen: "${entry}"\nFormat: oefening 3x8 80kg`);
+        return;
+      }
+      const [, name, setsStr, repsStr, weightStr] = match;
+      const sets = parseInt(setsStr, 10);
+      const reps = parseInt(repsStr, 10);
+      const weight = parseFloat(weightStr);
+      for (let i = 1; i <= sets; i++) {
+        rows.push({ date: today, exercise: name.toLowerCase().trim(), set_number: i, reps, weight_kg: weight });
+      }
+      summary.push(`${name}: ${sets}×${reps} @ ${weight}kg`);
+    }
+
+    await db.from("workouts").insert(rows);
+    await sendMessage(`✅ Workout gelogd:\n${summary.map((s) => `• ${s}`).join("\n")}`);
+    return;
+  }
+
   if (text === "/measure") {
     await sendMessage(
       "?? *Monthly measurements* � reply with your values:\n\n" +

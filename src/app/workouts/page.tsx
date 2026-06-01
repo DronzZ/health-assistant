@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { getProgressiveOverloadStatus } from "@/lib/overload-tracker";
+import WorkoutForm from "@/components/WorkoutForm";
 
 const trendIcon = { improving: "↑", plateau: "→", declining: "↓" };
 const trendColor = { improving: "text-green-400", plateau: "text-yellow-400", declining: "text-red-400" };
@@ -36,6 +37,8 @@ export default async function WorkoutsPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-lg font-bold pt-2">Workouts</h1>
+
+      <WorkoutForm />
 
       {/* Progressive overload status */}
       {overload.length > 0 && (
@@ -74,7 +77,7 @@ export default async function WorkoutsPage() {
       {/* Workout history */}
       {dates.length === 0 ? (
         <div className="bg-zinc-900 rounded-xl p-4 text-zinc-500 text-sm">
-          No workouts synced yet. Make sure Hevy sync is running.
+          Nog geen workouts gelogd. Gebruik het formulier hierboven of stuur <code>/workout bench press 4x8 80kg</code> via Telegram.
         </div>
       ) : (
         dates.map((date) => (
