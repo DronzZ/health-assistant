@@ -250,9 +250,15 @@ async function handleTextMessage(message: TelegramMessage): Promise<void> {
     return;
   }
 
-  // Check if message looks like measurement values (7 numbers)
-  const nums = text.split(/\s+/).map(Number).filter((n) => !isNaN(n));
-  if (nums.length === 7 && nums.every((n) => n > 0 && n < 200)) {
+  // Check if message looks like measurement values: the WHOLE message must be
+  // exactly 7 numbers (the /measure format "82 95 100 35 35 58 58"). Without the
+  // "every token is a number" guard, any text containing 7 stray small numbers
+  // (e.g. a meal list with "MAALTIJD 1..5", "6 ei") was wrongly saved as body
+  // measurements instead of going to the coach.
+  const tokens = text.split(/\s+/).filter(Boolean);
+  const allNumbers = tokens.length > 0 && tokens.every((t) => t !== "" && !isNaN(Number(t)));
+  const nums = tokens.map(Number);
+  if (tokens.length === 7 && allNumbers && nums.every((n) => n > 0 && n < 250)) {
     const [waist, hips, chest, left_arm, right_arm, left_thigh, right_thigh] = nums;
     await db.from("body_measurements").insert({ date: today, waist_cm: waist, hips_cm: hips, chest_cm: chest, left_arm_cm: left_arm, right_arm_cm: right_arm, left_thigh_cm: left_thigh, right_thigh_cm: right_thigh });
     await sendMessage(`?? Measurements saved:\nWaist: ${waist}cm | Hips: ${hips}cm | Chest: ${chest}cm\nArms: ${left_arm}/${right_arm}cm | Thighs: ${left_thigh}/${right_thigh}cm`);
