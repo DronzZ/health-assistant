@@ -162,8 +162,10 @@ export function MealPlanEditor({ items, todayIndex }: { items: Item[]; todayInde
       })}
 
       {form && (
-        <div className="fixed inset-x-0 bottom-0 z-[60] mx-auto max-w-md px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <div className="glass space-y-2.5 p-4">
+        <>
+          <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm" onClick={() => setForm(null)} />
+          <div className="fixed inset-x-0 bottom-0 z-[70] mx-auto max-w-md px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+            <div className="max-h-[82vh] space-y-2.5 overflow-y-auto rounded-2xl border border-hairline bg-[#101216] p-4 shadow-2xl">
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold">{form.id ? "Item bewerken" : "Nieuw item"}</span>
               <button type="button" onClick={() => setForm(null)} className="text-muted">
@@ -228,8 +230,9 @@ export function MealPlanEditor({ items, todayIndex }: { items: Item[]; todayInde
             >
               {pending ? "…" : "Opslaan"}
             </button>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
