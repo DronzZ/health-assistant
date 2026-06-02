@@ -70,18 +70,42 @@ const LOGGING_TOOLS: Anthropic.Tool[] = [
       required: ["score"],
     },
   },
+  {
+    name: "remember",
+    description:
+      "Permanently save a durable fact about the user so you NEVER ask for it again: profile details, injuries, equipment, available training days/times, goals, preferences, or a generated training/nutrition plan. Reuse the same `key` to UPDATE an existing fact instead of duplicating it. Call this whenever the user tells you something stable about themselves or their situation.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        key: { type: "string", description: "Stable identifier, snake_case, e.g. 'training_days', 'knee_injury', 'home_equipment', 'current_training_plan'" },
+        value: { type: "string", description: "The fact to remember, written concisely" },
+        category: { type: "string", enum: ["profile", "injury", "preference", "schedule", "goal", "plan", "other"] },
+      },
+      required: ["key", "value"],
+    },
+  },
+  {
+    name: "forget",
+    description: "Delete a durable fact that is no longer true. Use the exact key of the fact to remove.",
+    input_schema: {
+      type: "object" as const,
+      properties: { key: { type: "string" } },
+      required: ["key"],
+    },
+  },
 ];
 
 async function buildContext(): Promise<string> {
   const today = new Date().toISOString().split("T")[0];
 
-  const [targetsRes, dailyRes, foodRes, garminRes, workoutRes, painRes] = await Promise.all([
+  const [targetsRes, dailyRes, foodRes, garminRes, workoutRes, painRes, memoryRes] = await Promise.all([
     db.from("user_targets").select("*").single(),
     db.from("daily_logs").select("*").eq("date", today).single(),
     db.from("food_entries").select("*").eq("date", today).order("created_at"),
     db.from("garmin_data").select("*").eq("date", today).single(),
     db.from("workouts").select("exercise, sets, reps, weight_kg").eq("date", today),
     db.from("pain_log").select("*").eq("date", today).order("logged_at", { ascending: false }).limit(3),
+    db.from("coach_memory").select("key, value, category").order("category"),
   ]);
 
   const targets = targetsRes.data;
@@ -90,6 +114,13 @@ async function buildContext(): Promise<string> {
   const garmin = garminRes.data;
   const workouts = workoutRes.data ?? [];
   const pains = painRes.data ?? [];
+  const memory = memoryRes.data ?? [];
+
+  const memorySection = memory.length
+    ? `\n\nWHAT YOU ALREADY KNOW ABOUT THE USER (durable memory — NEVER ask for any of this again):\n${memory
+        .map((m: any) => `- [${m.category}] ${m.key}: ${m.value}`)
+        .join("\n")}`
+    : "\n\nWHAT YOU ALREADY KNOW ABOUT THE USER: nothing saved yet — use the `remember` tool as you learn stable facts.";
 
   const totalCals = food.reduce((s: number, f: any) => s + (f.calories ?? 0), 0);
   const totalProtein = food.reduce((s: number, f: any) => s + (f.protein_g ?? 0), 0);
@@ -106,21 +137,26 @@ async function buildContext(): Promise<string> {
 ${pains.length ? `- Pain log: ${pains.map((p: any) => `${p.pain_score}/10 (${p.location || "unspecified"}${p.activity_context ? " � " + p.activity_context : ""})`).join("; ")}` : ""}
 ${garmin ? `- Steps: ${garmin.steps ?? "?"} | Body Battery: ${garmin.body_battery_end ?? "?"} | Recovery time: ${garmin.recovery_time_hours ?? "?"}h | Sleep score: ${garmin.sleep_score ?? "?"}` : "- Garmin: not synced yet"}
 ${workouts.length ? `- Today's workouts: ${[...new Set(workouts.map((w: any) => w.exercise))].join(", ")}` : "- No workouts logged today"}
-${food.length ? `- Food logged: ${food.map((f: any) => `${f.name} (${f.calories}kcal, ${f.protein_g}g protein)`).join("; ")}` : "- No food logged yet"}`;
+${food.length ? `- Food logged: ${food.map((f: any) => `${f.name} (${f.calories}kcal, ${f.protein_g}g protein)`).join("; ")}` : "- No food logged yet"}${memorySection}`;
 }
 
 async function getConversationHistory(): Promise<Anthropic.MessageParam[]> {
+  // Fetch the MOST RECENT 30 messages, then restore chronological order.
+  // (Ordering ascending + limit returns the OLDEST rows, which froze the bot
+  //  on the start of the conversation and made it re-ask everything.)
   const { data } = await db
     .from("conversation_history")
     .select("role, message")
-    .order("created_at", { ascending: true })
-    .limit(15);
+    .order("created_at", { ascending: false })
+    .limit(30);
 
   if (!data?.length) return [];
-  return data.map((row: any) => ({
-    role: row.role as "user" | "assistant",
-    content: row.message,
-  }));
+  return data
+    .reverse()
+    .map((row: any) => ({
+      role: row.role as "user" | "assistant",
+      content: row.message,
+    }));
 }
 
 async function executeToolCall(name: string, input: Record<string, any>): Promise<void> {
@@ -174,6 +210,18 @@ async function executeToolCall(name: string, input: Record<string, any>): Promis
       activity_context: input.activity_context ?? null,
       notes: input.notes ?? null,
     });
+  } else if (name === "remember") {
+    await db.from("coach_memory").upsert(
+      {
+        key: input.key,
+        value: input.value,
+        category: input.category ?? "other",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" }
+    );
+  } else if (name === "forget") {
+    await db.from("coach_memory").delete().eq("key", input.key);
   }
 }
 
@@ -192,6 +240,11 @@ YOUR STYLE:
 - Give one specific, actionable instruction for what to do next.
 - If the user can log something, use a logging tool.
 - If macros were estimated, always mention that with a ??.
+
+MEMORY (critical):
+- The "WHAT YOU ALREADY KNOW ABOUT THE USER" block in the context is your durable memory. Treat it as ground truth and NEVER ask for anything already listed there.
+- Whenever the user tells you a stable fact (injuries, equipment, available training days/times, goals, preferences) OR you finalise a training/nutrition plan, immediately call the \`remember\` tool to save it. Reuse the same key to update; use \`forget\` when something is no longer true.
+- Before asking a question, check your memory. If you have enough saved facts to build a schedule, build it now instead of asking again.
 
 CRITICAL RULES:
 - Knee pain = 7: no running suggestion, period.

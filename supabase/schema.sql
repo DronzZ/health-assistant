@@ -221,6 +221,18 @@ CREATE TABLE IF NOT EXISTS conversation_summary (
   created_at timestamptz DEFAULT now()
 );
 
+-- Durable coach memory: facts the trainer must never forget (profile, injuries,
+-- preferences, schedule, generated training plan). Keyed so facts update in place
+-- instead of duplicating. Always injected into the coach's context.
+CREATE TABLE IF NOT EXISTS coach_memory (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  key text NOT NULL UNIQUE,
+  value text NOT NULL,
+  category text CHECK (category IN ('profile','injury','preference','schedule','goal','plan','other')) DEFAULT 'other',
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
 -- Progress photos
 CREATE TABLE IF NOT EXISTS progress_photos (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -252,6 +264,7 @@ CREATE INDEX IF NOT EXISTS idx_pain_log_date ON pain_log(date);
 CREATE INDEX IF NOT EXISTS idx_conversation_history_created ON conversation_history(created_at);
 CREATE INDEX IF NOT EXISTS idx_bloodwork_date ON bloodwork(date);
 CREATE INDEX IF NOT EXISTS idx_bloodwork_marker ON bloodwork(marker);
+CREATE INDEX IF NOT EXISTS idx_coach_memory_category ON coach_memory(category);
 
 -- Row Level Security (single-user app — service key bypasses RLS, anon key is blocked)
 ALTER TABLE daily_logs ENABLE ROW LEVEL SECURITY;
@@ -270,6 +283,7 @@ ALTER TABLE conversation_summary ENABLE ROW LEVEL SECURITY;
 ALTER TABLE progress_photos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bloodwork ENABLE ROW LEVEL SECURITY;
 ALTER TABLE garmin_auth ENABLE ROW LEVEL SECURITY;
+ALTER TABLE coach_memory ENABLE ROW LEVEL SECURITY;
 
 -- Allow authenticated users to read/write their own data
 -- (In practice the server uses the service key which bypasses RLS)
@@ -290,6 +304,7 @@ CREATE POLICY "authenticated_only" ON conversation_summary FOR ALL TO authentica
 CREATE POLICY "authenticated_only" ON progress_photos FOR ALL TO authenticated USING (true);
 CREATE POLICY "authenticated_only" ON bloodwork FOR ALL TO authenticated USING (true);
 CREATE POLICY "authenticated_only" ON garmin_auth FOR ALL TO authenticated USING (true);
+CREATE POLICY "authenticated_only" ON coach_memory FOR ALL TO authenticated USING (true);
 
 -- Insert a default user_targets row
 INSERT INTO user_targets (tdee, calorie_target, protein_g, fiber_g, water_ml, steps)
