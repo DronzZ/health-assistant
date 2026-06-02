@@ -1,7 +1,8 @@
 ﻿import Anthropic from "@anthropic-ai/sdk";
-import { db } from "./db";
+import { db, runQuery } from "./db";
 import { getModel, routeMessage } from "./model-router";
 import { sendMessage } from "./telegram";
+import { todayString } from "./date";
 
 const client = new Anthropic();
 
@@ -93,19 +94,54 @@ const LOGGING_TOOLS: Anthropic.Tool[] = [
       required: ["key"],
     },
   },
+  {
+    name: "set_meal_plan_item",
+    description:
+      "Add or update an item in the user's weekly meal plan (shown on the dashboard). Reuse the same day_of_week + meal_slot + food_item to update an existing item. Build the full plan day by day when the user asks you to design their nutrition.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        day_of_week: { type: "number", description: "0=Monday .. 6=Sunday" },
+        meal_slot: { type: "string", enum: ["breakfast", "lunch", "dinner", "snack"] },
+        food_item: { type: "string" },
+        target_grams: { type: "number" },
+        kcal_per_100g: { type: "number" },
+        protein_per_100g: { type: "number" },
+        carbs_per_100g: { type: "number" },
+        fat_per_100g: { type: "number" },
+        fiber_per_100g: { type: "number" },
+        is_refeed_day: { type: "boolean" },
+      },
+      required: ["day_of_week", "meal_slot", "food_item"],
+    },
+  },
+  {
+    name: "remove_meal_plan_item",
+    description: "Remove an item from the weekly meal plan by day_of_week (0=Mon..6=Sun), meal_slot and food_item.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        day_of_week: { type: "number" },
+        meal_slot: { type: "string", enum: ["breakfast", "lunch", "dinner", "snack"] },
+        food_item: { type: "string" },
+      },
+      required: ["day_of_week", "meal_slot", "food_item"],
+    },
+  },
 ];
 
 async function buildContext(): Promise<string> {
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayString();
 
-  const [targetsRes, dailyRes, foodRes, garminRes, workoutRes, painRes, memoryRes] = await Promise.all([
-    db.from("user_targets").select("*").single(),
-    db.from("daily_logs").select("*").eq("date", today).single(),
+  const [targetsRes, dailyRes, foodRes, garminRes, workoutRes, painRes, memoryRes, mealPlanRes] = await Promise.all([
+    db.from("user_targets").select("*").maybeSingle(),
+    db.from("daily_logs").select("*").eq("date", today).maybeSingle(),
     db.from("food_entries").select("*").eq("date", today).order("created_at"),
-    db.from("garmin_data").select("*").eq("date", today).single(),
-    db.from("workouts").select("exercise, sets, reps, weight_kg").eq("date", today),
+    db.from("garmin_data").select("*").eq("date", today).maybeSingle(),
+    db.from("workouts").select("exercise").eq("date", today),
     db.from("pain_log").select("*").eq("date", today).order("logged_at", { ascending: false }).limit(3),
     db.from("coach_memory").select("key, value, category").order("category"),
+    db.from("meal_plan").select("day_of_week, meal_slot, food_item, target_grams").order("day_of_week").order("meal_slot"),
   ]);
 
   const targets = targetsRes.data;
@@ -115,6 +151,19 @@ async function buildContext(): Promise<string> {
   const workouts = workoutRes.data ?? [];
   const pains = painRes.data ?? [];
   const memory = memoryRes.data ?? [];
+  const mealPlan = mealPlanRes.data ?? [];
+
+  const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const mealByDay: Record<number, string[]> = {};
+  for (const m of mealPlan as any[]) {
+    (mealByDay[m.day_of_week] ??= []).push(`${m.food_item}${m.target_grams ? ` ${m.target_grams}g` : ""}`);
+  }
+  const mealPlanSection = mealPlan.length
+    ? `\n\nWEEKLY MEAL PLAN (edit with set_meal_plan_item / remove_meal_plan_item; day_of_week 0=Mon..6=Sun):\n${DAY_NAMES
+        .map((d, i) => (mealByDay[i]?.length ? `- ${d}: ${mealByDay[i].join(", ")}` : null))
+        .filter(Boolean)
+        .join("\n")}`
+    : "\n\nWEEKLY MEAL PLAN: none set yet — use set_meal_plan_item to build one when the user asks for a nutrition plan.";
 
   const memorySection = memory.length
     ? `\n\nWHAT YOU ALREADY KNOW ABOUT THE USER (durable memory — NEVER ask for any of this again):\n${memory
@@ -137,7 +186,7 @@ async function buildContext(): Promise<string> {
 ${pains.length ? `- Pain log: ${pains.map((p: any) => `${p.pain_score}/10 (${p.location || "unspecified"}${p.activity_context ? " � " + p.activity_context : ""})`).join("; ")}` : ""}
 ${garmin ? `- Steps: ${garmin.steps ?? "?"} | Body Battery: ${garmin.body_battery_end ?? "?"} | Recovery time: ${garmin.recovery_time_hours ?? "?"}h | Sleep score: ${garmin.sleep_score ?? "?"}` : "- Garmin: not synced yet"}
 ${workouts.length ? `- Today's workouts: ${[...new Set(workouts.map((w: any) => w.exercise))].join(", ")}` : "- No workouts logged today"}
-${food.length ? `- Food logged: ${food.map((f: any) => `${f.name} (${f.calories}kcal, ${f.protein_g}g protein)`).join("; ")}` : "- No food logged yet"}${memorySection}`;
+${food.length ? `- Food logged: ${food.map((f: any) => `${f.name} (${f.calories}kcal, ${f.protein_g}g protein)`).join("; ")}` : "- No food logged yet"}${memorySection}${mealPlanSection}`;
 }
 
 async function getConversationHistory(): Promise<Anthropic.MessageParam[]> {
@@ -160,68 +209,117 @@ async function getConversationHistory(): Promise<Anthropic.MessageParam[]> {
 }
 
 async function executeToolCall(name: string, input: Record<string, any>): Promise<void> {
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayString();
 
-  // Ensure daily_logs row exists for today
-  await db.from("daily_logs").upsert({ date: today }, { onConflict: "date", ignoreDuplicates: true });
+  // Ensure a daily_logs row exists for today before updating it.
+  await runQuery(
+    db.from("daily_logs").upsert({ date: today }, { onConflict: "date", ignoreDuplicates: true }),
+    "ensure daily log"
+  );
 
   if (name === "log_water") {
-    await db.from("daily_logs").upsert(
-      { date: today, water_ml: input.ml },
-      { onConflict: "date" }
-    );
-    // Partial update workaround: increment existing value
-    const { data } = await db.from("daily_logs").select("water_ml").eq("date", today).single();
+    // Additive: read the running total and add to it (never overwrite).
+    const { data } = await db.from("daily_logs").select("water_ml").eq("date", today).maybeSingle();
     const current = data?.water_ml ?? 0;
-    await db.from("daily_logs").update({ water_ml: current + input.ml }).eq("date", today);
+    await runQuery(
+      db.from("daily_logs").update({ water_ml: current + input.ml }).eq("date", today),
+      "log water"
+    );
   } else if (name === "log_weight") {
-    await db.from("daily_logs").update({ weight_kg: input.kg }).eq("date", today);
+    await runQuery(
+      db.from("daily_logs").update({ weight_kg: input.kg }).eq("date", today),
+      "log weight"
+    );
   } else if (name === "log_food") {
-    await db.from("food_entries").insert({
-      date: today,
-      name: input.name,
-      grams_eaten: input.grams ?? null,
-      calories: input.calories,
-      protein_g: input.protein_g ?? 0,
-      carbs_g: input.carbs_g ?? 0,
-      fat_g: input.fat_g ?? 0,
-      fiber_g: input.fiber_g ?? 0,
-      meal_slot: input.meal_slot ?? "snack",
-      source: input.source,
-    });
+    await runQuery(
+      db.from("food_entries").insert({
+        date: today,
+        name: input.name,
+        grams_eaten: input.grams ?? null,
+        calories: input.calories,
+        protein_g: input.protein_g ?? 0,
+        carbs_g: input.carbs_g ?? 0,
+        fat_g: input.fat_g ?? 0,
+        fiber_g: input.fiber_g ?? 0,
+        meal_slot: input.meal_slot ?? "snack",
+        source: input.source,
+      }),
+      "log food"
+    );
   } else if (name === "log_supplements") {
-    const { data } = await db.from("daily_logs").select("supplements").eq("date", today).single();
+    const { data } = await db.from("daily_logs").select("supplements").eq("date", today).maybeSingle();
     const existing: string[] = data?.supplements ?? [];
     const merged = [...new Set([...existing, ...input.supplements])];
-    await db.from("daily_logs").update({ supplements: merged }).eq("date", today);
+    await runQuery(
+      db.from("daily_logs").update({ supplements: merged }).eq("date", today),
+      "log supplements"
+    );
   } else if (name === "log_readiness") {
-    await db.from("daily_logs").update({
-      morning_energy: input.energy ?? null,
-      morning_soreness: input.soreness ?? null,
-      morning_knee_pain: input.knee_pain ?? null,
-      morning_mood: input.mood ?? null,
-    }).eq("date", today);
+    await runQuery(
+      db.from("daily_logs").update({
+        morning_energy: input.energy ?? null,
+        morning_soreness: input.soreness ?? null,
+        morning_knee_pain: input.knee_pain ?? null,
+        morning_mood: input.mood ?? null,
+      }).eq("date", today),
+      "log readiness"
+    );
   } else if (name === "log_pain") {
-    await db.from("pain_log").insert({
-      date: today,
-      pain_score: input.score,
-      location: input.location ?? null,
-      pain_type: input.pain_type ?? null,
-      activity_context: input.activity_context ?? null,
-      notes: input.notes ?? null,
-    });
+    await runQuery(
+      db.from("pain_log").insert({
+        date: today,
+        pain_score: input.score,
+        location: input.location ?? null,
+        pain_type: input.pain_type ?? null,
+        activity_context: input.activity_context ?? null,
+        notes: input.notes ?? null,
+      }),
+      "log pain"
+    );
   } else if (name === "remember") {
-    await db.from("coach_memory").upsert(
-      {
-        key: input.key,
-        value: input.value,
-        category: input.category ?? "other",
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "key" }
+    await runQuery(
+      db.from("coach_memory").upsert(
+        {
+          key: input.key,
+          value: input.value,
+          category: input.category ?? "other",
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "key" }
+      ),
+      "remember"
     );
   } else if (name === "forget") {
-    await db.from("coach_memory").delete().eq("key", input.key);
+    await runQuery(db.from("coach_memory").delete().eq("key", input.key), "forget");
+  } else if (name === "set_meal_plan_item") {
+    await runQuery(
+      db.from("meal_plan").upsert(
+        {
+          day_of_week: input.day_of_week,
+          meal_slot: input.meal_slot,
+          food_item: input.food_item,
+          target_grams: input.target_grams ?? null,
+          kcal_per_100g: input.kcal_per_100g ?? null,
+          protein_per_100g: input.protein_per_100g ?? null,
+          carbs_per_100g: input.carbs_per_100g ?? null,
+          fat_per_100g: input.fat_per_100g ?? null,
+          fiber_per_100g: input.fiber_per_100g ?? null,
+          is_refeed_day: input.is_refeed_day ?? false,
+        },
+        { onConflict: "day_of_week,meal_slot,food_item" }
+      ),
+      "set meal plan item"
+    );
+  } else if (name === "remove_meal_plan_item") {
+    await runQuery(
+      db
+        .from("meal_plan")
+        .delete()
+        .eq("day_of_week", input.day_of_week)
+        .eq("meal_slot", input.meal_slot)
+        .eq("food_item", input.food_item),
+      "remove meal plan item"
+    );
   }
 }
 
@@ -264,7 +362,10 @@ export async function handleConversation(userMessage: string): Promise<void> {
   const response = await client.messages.create({
     model,
     max_tokens: 2048,
-    system: `${SYSTEM_PROMPT}\n\n${context}`,
+    system: [
+      { type: "text", text: SYSTEM_PROMPT },
+      { type: "text", text: context, cache_control: { type: "ephemeral" } },
+    ],
     tools: LOGGING_TOOLS,
     messages,
   });
@@ -276,12 +377,26 @@ export async function handleConversation(userMessage: string): Promise<void> {
       .join("\n")
       .trim();
 
-  // Execute any tool calls
+  // Execute any tool calls. A DB write that fails must NOT look like success:
+  // capture the failure in the tool_result so the follow-up reply tells the user
+  // honestly that nothing was saved, instead of a false "✅".
   const toolResults: Anthropic.ToolResultBlockParam[] = [];
+  let anyToolFailed = false;
   for (const block of response.content) {
     if (block.type === "tool_use") {
-      await executeToolCall(block.name, block.input as Record<string, any>);
-      toolResults.push({ type: "tool_result", tool_use_id: block.id, content: "logged" });
+      try {
+        await executeToolCall(block.name, block.input as Record<string, any>);
+        toolResults.push({ type: "tool_result", tool_use_id: block.id, content: "logged" });
+      } catch (err) {
+        anyToolFailed = true;
+        console.error(`Tool ${block.name} failed:`, err);
+        toolResults.push({
+          type: "tool_result",
+          tool_use_id: block.id,
+          content: `FAILED to save: ${err instanceof Error ? err.message : "database error"}. Tell the user it was NOT saved.`,
+          is_error: true,
+        });
+      }
     }
   }
 
@@ -292,7 +407,10 @@ export async function handleConversation(userMessage: string): Promise<void> {
     const followUp = await client.messages.create({
       model,
       max_tokens: 2048,
-      system: `${SYSTEM_PROMPT}\n\n${context}`,
+      system: [
+      { type: "text", text: SYSTEM_PROMPT },
+      { type: "text", text: context, cache_control: { type: "ephemeral" } },
+    ],
       messages: [
         ...messages,
         { role: "assistant", content: response.content },
@@ -307,14 +425,25 @@ export async function handleConversation(userMessage: string): Promise<void> {
   // Final safety net: Telegram rejects empty messages. If the model produced
   // no text at all (e.g. a pure tool-call turn), send a sensible default.
   if (!replyText) {
-    replyText = toolResults.length > 0 ? "✅ Genoteerd." : "🤔 Geen antwoord gegenereerd — probeer het opnieuw.";
+    if (anyToolFailed) {
+      replyText = "⚠️ Er ging iets mis bij het opslaan — het is NIET bewaard. Probeer het opnieuw.";
+    } else {
+      replyText = toolResults.length > 0 ? "✅ Genoteerd." : "🤔 Geen antwoord gegenereerd — probeer het opnieuw.";
+    }
   }
 
-  // Persist conversation
-  await db.from("conversation_history").insert([
-    { role: "user", message: userMessage, model_used: model },
-    { role: "assistant", message: replyText, model_used: model, token_count: response.usage?.output_tokens },
-  ]);
+  // Persist conversation (best-effort: a failure here must not block the reply).
+  try {
+    await runQuery(
+      db.from("conversation_history").insert([
+        { role: "user", message: userMessage, model_used: model },
+        { role: "assistant", message: replyText, model_used: model, token_count: response.usage?.output_tokens },
+      ]),
+      "save conversation"
+    );
+  } catch (e) {
+    console.error("Failed to persist conversation:", e);
+  }
 
   await sendMessage(replyText);
 }

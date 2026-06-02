@@ -13,8 +13,9 @@ import { handleConversation } from "@/lib/trainer";
 import { parseFoodLabel, extractGrams } from "@/lib/food-parser";
 import { analyzeProgressPhoto } from "@/lib/progress-analyzer";
 import { analyzeBloodwork } from "@/lib/bloodwork-analyzer";
-import { db } from "@/lib/db";
+import { db, runQuery } from "@/lib/db";
 import { lookupFood } from "@/lib/food-lookup";
+import { todayString } from "@/lib/date";
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   // Respond immediately � Telegram requires a response within 5 seconds
@@ -86,19 +87,22 @@ async function handleMediaMessage(message: TelegramMessage): Promise<void> {
     if (fileId) {
       const base64 = await downloadFileAsBase64(fileId);
       const macros = await parseFoodLabel(base64, mimeType, gramsFromCaption);
-      const today = new Date().toISOString().split("T")[0];
-      await db.from("food_entries").insert({
-        date: today,
-        name: macros.name,
-        grams_eaten: macros.grams,
-        calories: macros.calories,
-        protein_g: macros.protein_g,
-        carbs_g: macros.carbs_g,
-        fat_g: macros.fat_g,
-        fiber_g: macros.fiber_g,
-        meal_slot: "snack",
-        source: "photo_label",
-      });
+      const today = todayString();
+      await runQuery(
+        db.from("food_entries").insert({
+          date: today,
+          name: macros.name,
+          grams_eaten: macros.grams,
+          calories: macros.calories,
+          protein_g: macros.protein_g,
+          carbs_g: macros.carbs_g,
+          fat_g: macros.fat_g,
+          fiber_g: macros.fiber_g,
+          meal_slot: "snack",
+          source: "photo_label",
+        }),
+        "log food (label scan)"
+      );
       await sendMessage(
         `? Logged (label scan): *${macros.name}* � ${macros.grams}g\n` +
         `� ${macros.calories} kcal | ${macros.protein_g}g protein | ${macros.carbs_g}g carbs | ${macros.fat_g}g fat | ${macros.fiber_g}g fiber`
@@ -113,18 +117,24 @@ async function handleMediaMessage(message: TelegramMessage): Promise<void> {
 
 async function handleTextMessage(message: TelegramMessage): Promise<void> {
   const text = message.text!.trim();
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayString();
 
   // Ensure daily_logs row exists
-  await db.from("daily_logs").upsert({ date: today }, { onConflict: "date", ignoreDuplicates: true });
+  await runQuery(
+    db.from("daily_logs").upsert({ date: today }, { onConflict: "date", ignoreDuplicates: true }),
+    "ensure daily log"
+  );
 
   // Quick command shortcuts
   if (text.startsWith("/water ")) {
     const litres = parseFloat(text.replace("/water ", ""));
     if (!isNaN(litres)) {
       const ml = Math.round(litres * 1000);
-      const { data } = await db.from("daily_logs").select("water_ml").eq("date", today).single();
-      await db.from("daily_logs").update({ water_ml: (data?.water_ml ?? 0) + ml }).eq("date", today);
+      const { data } = await db.from("daily_logs").select("water_ml").eq("date", today).maybeSingle();
+      await runQuery(
+        db.from("daily_logs").update({ water_ml: (data?.water_ml ?? 0) + ml }).eq("date", today),
+        "log water"
+      );
       await sendMessage(`?? Logged ${litres}L water. Total today: ${((data?.water_ml ?? 0) + ml) / 1000}L`);
       return;
     }
@@ -133,7 +143,7 @@ async function handleTextMessage(message: TelegramMessage): Promise<void> {
   if (text.startsWith("/weight ")) {
     const kg = parseFloat(text.replace("/weight ", ""));
     if (!isNaN(kg)) {
-      await db.from("daily_logs").update({ weight_kg: kg }).eq("date", today);
+      await runQuery(db.from("daily_logs").update({ weight_kg: kg }).eq("date", today), "log weight");
       await sendMessage(`?? Weight logged: ${kg} kg`);
       return;
     }
@@ -142,12 +152,15 @@ async function handleTextMessage(message: TelegramMessage): Promise<void> {
   if (text.startsWith("/readiness ")) {
     const parts = text.replace("/readiness ", "").split(/\s+/).map(Number);
     const [energy, soreness, knee_pain, mood] = parts;
-    await db.from("daily_logs").update({
-      morning_energy: energy ?? null,
-      morning_soreness: soreness ?? null,
-      morning_knee_pain: knee_pain ?? null,
-      morning_mood: mood ?? null,
-    }).eq("date", today);
+    await runQuery(
+      db.from("daily_logs").update({
+        morning_energy: energy ?? null,
+        morning_soreness: soreness ?? null,
+        morning_knee_pain: knee_pain ?? null,
+        morning_mood: mood ?? null,
+      }).eq("date", today),
+      "log readiness"
+    );
     const kneeWarning = knee_pain >= 7 ? "\n?? Knee pain at 7+. No running today." : "";
     await sendMessage(`? Readiness logged: energy ${energy}/10, soreness ${soreness}/10, knee ${knee_pain}/10, mood ${mood}/10${kneeWarning}`);
     return;
@@ -155,9 +168,9 @@ async function handleTextMessage(message: TelegramMessage): Promise<void> {
 
   if (text.startsWith("/supplements ")) {
     const sups = text.replace("/supplements ", "").split(",").map((s) => s.trim());
-    const { data } = await db.from("daily_logs").select("supplements").eq("date", today).single();
+    const { data } = await db.from("daily_logs").select("supplements").eq("date", today).maybeSingle();
     const merged = [...new Set([...(data?.supplements ?? []), ...sups])];
-    await db.from("daily_logs").update({ supplements: merged }).eq("date", today);
+    await runQuery(db.from("daily_logs").update({ supplements: merged }).eq("date", today), "log supplements");
     await sendMessage(`?? Supplements logged: ${sups.join(", ")}`);
     return;
   }
@@ -166,18 +179,21 @@ async function handleTextMessage(message: TelegramMessage): Promise<void> {
     const query = text.replace("/food ", "");
     const results = await lookupFood(query);
     for (const item of results) {
-      await db.from("food_entries").insert({
-        date: today,
-        name: item.name,
-        grams_eaten: item.grams,
-        calories: item.calories,
-        protein_g: item.protein_g,
-        carbs_g: item.carbs_g,
-        fat_g: item.fat_g,
-        fiber_g: item.fiber_g,
-        meal_slot: "snack",
-        source: item.source,
-      });
+      await runQuery(
+        db.from("food_entries").insert({
+          date: today,
+          name: item.name,
+          grams_eaten: item.grams,
+          calories: item.calories,
+          protein_g: item.protein_g,
+          carbs_g: item.carbs_g,
+          fat_g: item.fat_g,
+          fiber_g: item.fiber_g,
+          meal_slot: "snack",
+          source: item.source,
+        }),
+        "log food"
+      );
     }
     const lines = results.map(
       (r) => `${r.warning ? r.warning + "\n" : ""}? *${r.name}* (${r.grams}g): ${r.calories}kcal | ${r.protein_g}g protein | ${r.fiber_g}g fiber`
@@ -188,9 +204,9 @@ async function handleTextMessage(message: TelegramMessage): Promise<void> {
 
   if (text === "/today") {
     const [dailyRes, foodRes, garminRes] = await Promise.all([
-      db.from("daily_logs").select("*").eq("date", today).single(),
+      db.from("daily_logs").select("*").eq("date", today).maybeSingle(),
       db.from("food_entries").select("*").eq("date", today),
-      db.from("garmin_data").select("*").eq("date", today).single(),
+      db.from("garmin_data").select("*").eq("date", today).maybeSingle(),
     ]);
     const daily = dailyRes.data;
     const food = foodRes.data ?? [];
@@ -236,7 +252,7 @@ async function handleTextMessage(message: TelegramMessage): Promise<void> {
       summary.push(`${name}: ${sets}×${reps} @ ${weight}kg`);
     }
 
-    await db.from("workouts").insert(rows);
+    await runQuery(db.from("workouts").insert(rows), "log workout");
     await sendMessage(`✅ Workout gelogd:\n${summary.map((s) => `• ${s}`).join("\n")}`);
     return;
   }
@@ -260,7 +276,10 @@ async function handleTextMessage(message: TelegramMessage): Promise<void> {
   const nums = tokens.map(Number);
   if (tokens.length === 7 && allNumbers && nums.every((n) => n > 0 && n < 250)) {
     const [waist, hips, chest, left_arm, right_arm, left_thigh, right_thigh] = nums;
-    await db.from("body_measurements").insert({ date: today, waist_cm: waist, hips_cm: hips, chest_cm: chest, left_arm_cm: left_arm, right_arm_cm: right_arm, left_thigh_cm: left_thigh, right_thigh_cm: right_thigh });
+    await runQuery(
+      db.from("body_measurements").insert({ date: today, waist_cm: waist, hips_cm: hips, chest_cm: chest, left_arm_cm: left_arm, right_arm_cm: right_arm, left_thigh_cm: left_thigh, right_thigh_cm: right_thigh }),
+      "log measurements"
+    );
     await sendMessage(`?? Measurements saved:\nWaist: ${waist}cm | Hips: ${hips}cm | Chest: ${chest}cm\nArms: ${left_arm}/${right_arm}cm | Thighs: ${left_thigh}/${right_thigh}cm`);
     return;
   }

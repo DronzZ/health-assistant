@@ -1,26 +1,114 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ──────────────────────────────────────────────────────────────────────────
+   "Instrument console" design system
+   Dark, precise readout panel. Glass cards float on a near-black canvas lit by a
+   faint aurora glow. Big mono numerals are the heroes; each metric gets its own
+   vivid hue. Fonts: Bricolage Grotesque (display/body) + IBM Plex Mono (data).
+   ────────────────────────────────────────────────────────────────────────── */
+
+@theme {
+  --font-sans: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SF Mono", monospace;
+
+  --color-canvas: #08090c;
+  --color-ink: #eceef2;
+  --color-muted: #8b909b;
+  --color-faint: #565b66;
+  --color-hairline: rgba(255, 255, 255, 0.08);
+
+  /* per-metric accents */
+  --color-cal: #f5b544;
+  --color-pro: #3fe0a0;
+  --color-water: #3fc8f5;
+  --color-steps: #a78bfa;
+  --color-sleep: #7c9cff;
+
+  /* semantic status */
+  --color-good: #3fe0a0;
+  --color-warn: #f4c152;
+  --color-alert: #fb6b6b;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  -webkit-tap-highlight-color: transparent;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100svh;
+}
+
+/* Atmosphere: a faint aurora from the top edge. Sits behind everything. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(120% 75% at 50% -25%, rgba(63, 224, 160, 0.1), transparent 60%),
+    radial-gradient(90% 60% at 100% 0%, rgba(124, 156, 255, 0.08), transparent 55%);
+}
+
+/* Lined-up, tabular numerals everywhere the mono font is used. */
+.font-mono {
+  font-feature-settings: "tnum" 1, "zero" 1;
+  letter-spacing: -0.01em;
+}
+
+/* The signature glass panel. */
+.glass {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.025));
+  border: 1px solid var(--color-hairline);
+  border-radius: 20px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 10px 30px -12px rgba(0, 0, 0, 0.6);
+}
+
+/* Small inset control surface (steppers, pills, inputs). */
+.inset {
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--color-hairline);
+  border-radius: 12px;
+}
+
+/* Staggered entrance on load. Apply .rise and set --d for the delay. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.rise {
+  animation: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--d, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise {
+    animation: none;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

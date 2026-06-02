@@ -1,157 +1,110 @@
-﻿export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 import { db } from "@/lib/db";
+import { dateStringDaysAgo } from "@/lib/date";
+import { Card, SectionLabel, Sparkline } from "@/components/charts";
 
-function scoreColor(score: number | null) {
-  if (!score) return "text-zinc-400";
-  if (score >= 80) return "text-green-400";
-  if (score >= 60) return "text-yellow-400";
-  return "text-red-400";
+function hm(min: number | null): string {
+  if (!min) return "—";
+  return `${Math.floor(min / 60)}h ${min % 60}m`;
 }
 
-export default async function SleepPage() {
-  const today = new Date();
-  const thirtyDaysAgo = new Date(today);
-  thirtyDaysAgo.setDate(today.getDate() - 30);
+const STAGES = [
+  { key: "deep_sleep_min", label: "Deep", color: "#4c63d9" },
+  { key: "rem_sleep_min", label: "REM", color: "var(--color-sleep)" },
+  { key: "light_sleep_min", label: "Light", color: "#5fa8d3" },
+  { key: "awake_min", label: "Awake", color: "var(--color-faint)" },
+] as const;
 
+export default async function SleepPage() {
   const { data } = await db
     .from("garmin_data")
     .select(
-      "date, sleep_score, sleep_duration_min, deep_sleep_min, light_sleep_min, rem_sleep_min, awake_min, hrv_last_night, hrv_weekly_avg, hrv_status, sleep_avg_spo2, sleep_avg_respiration, body_battery_end"
+      "date, sleep_score, sleep_duration_min, deep_sleep_min, light_sleep_min, rem_sleep_min, awake_min, hrv_last_night, hrv_status, sleep_avg_respiration, body_battery_end, stress_avg"
     )
-    .gte("date", thirtyDaysAgo.toISOString().split("T")[0])
+    .gte("date", dateStringDaysAgo(30))
     .order("date", { ascending: false });
 
   const rows = data ?? [];
   const latest = rows[0];
+  const scoreSeries = rows.map((r) => r.sleep_score as number).reverse();
+  const hrvSeries = rows.map((r) => r.hrv_last_night as number).reverse();
 
-  const avgScore =
-    rows.filter((r) => r.sleep_score).length > 0
-      ? Math.round(
-          rows.filter((r) => r.sleep_score).reduce((s, r) => s + (r.sleep_score ?? 0), 0) /
-            rows.filter((r) => r.sleep_score).length
-        )
-      : null;
-
-  const avgHRV =
-    rows.filter((r) => r.hrv_last_night).length > 0
-      ? Math.round(
-          rows.filter((r) => r.hrv_last_night).reduce((s, r) => s + (r.hrv_last_night ?? 0), 0) /
-            rows.filter((r) => r.hrv_last_night).length
-        )
-      : null;
+  const stageTotal = STAGES.reduce((s, st) => s + ((latest?.[st.key] as number) ?? 0), 0);
 
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-bold pt-2">Sleep</h1>
+      <header className="rise pb-1">
+        <h1 className="text-2xl font-bold tracking-tight">Sleep</h1>
+        <p className="text-xs text-muted">Last night · auto-synced from Garmin</p>
+      </header>
 
-      {/* Latest night */}
-      {latest && (
-        <div className="bg-zinc-900 rounded-xl p-4">
-          <div className="text-xs text-zinc-500 mb-3">Last night ({latest.date})</div>
-          <div className="grid grid-cols-3 gap-3 text-center mb-4">
-            <div className="bg-zinc-800 rounded-xl p-3">
-              <div className="text-xs text-zinc-500 mb-1">Score</div>
-              <div className={`text-2xl font-bold ${scoreColor(latest.sleep_score)}`}>
-                {latest.sleep_score ?? "—"}
-              </div>
+      {!latest ? (
+        <Card delay={40}>
+          <p className="py-4 text-center text-sm text-muted">Nog geen Garmin-slaapdata. Synct automatisch elke ochtend.</p>
+        </Card>
+      ) : (
+        <>
+          <Card delay={40} className="flex items-center gap-5">
+            <div>
+              <div className="font-mono text-5xl font-bold leading-none text-water">{latest.sleep_score ?? "—"}</div>
+              <div className="mt-1 text-[11px] uppercase tracking-[0.16em] text-faint">Sleep score</div>
             </div>
-            <div className="bg-zinc-800 rounded-xl p-3">
-              <div className="text-xs text-zinc-500 mb-1">Duration</div>
-              <div className="text-xl font-bold">
-                {latest.sleep_duration_min
-                  ? `${Math.floor(latest.sleep_duration_min / 60)}h${latest.sleep_duration_min % 60}m`
-                  : "—"}
-              </div>
+            <div className="flex-1">
+              <div className="font-mono text-2xl font-semibold">{hm(latest.sleep_duration_min)}</div>
+              <div className="mt-0.5 text-xs text-muted">in bed</div>
             </div>
-            <div className="bg-zinc-800 rounded-xl p-3">
-              <div className="text-xs text-zinc-500 mb-1">HRV</div>
-              <div className="text-2xl font-bold">{latest.hrv_last_night ?? "—"}</div>
-            </div>
-          </div>
+          </Card>
 
-          {/* Sleep stages */}
-          {latest.deep_sleep_min && (
-            <div className="grid grid-cols-4 gap-2 text-center text-sm">
-              <div>
-                <div className="font-bold text-blue-400">{latest.deep_sleep_min}m</div>
-                <div className="text-xs text-zinc-500">Deep</div>
-              </div>
-              <div>
-                <div className="font-bold text-cyan-400">{latest.light_sleep_min ?? "—"}m</div>
-                <div className="text-xs text-zinc-500">Light</div>
-              </div>
-              <div>
-                <div className="font-bold text-purple-400">{latest.rem_sleep_min ?? "—"}m</div>
-                <div className="text-xs text-zinc-500">REM</div>
-              </div>
-              <div>
-                <div className="font-bold text-zinc-400">{latest.awake_min ?? "—"}m</div>
-                <div className="text-xs text-zinc-500">Awake</div>
-              </div>
+          <Card delay={80}>
+            <SectionLabel>Stages</SectionLabel>
+            <div className="mb-3 flex h-3 w-full overflow-hidden rounded-full">
+              {STAGES.map((st) => {
+                const v = (latest[st.key] as number) ?? 0;
+                const pct = stageTotal > 0 ? (v / stageTotal) * 100 : 0;
+                return <div key={st.key} style={{ width: `${pct}%`, background: st.color }} />;
+              })}
             </div>
-          )}
-
-          {(latest.hrv_status || latest.sleep_avg_spo2) && (
-            <div className="mt-3 flex gap-3 text-xs text-zinc-500">
-              {latest.hrv_status && <span>HRV status: <span className="text-zinc-300">{latest.hrv_status}</span></span>}
-              {latest.sleep_avg_spo2 && <span>SpO₂: <span className="text-zinc-300">{latest.sleep_avg_spo2}%</span></span>}
-              {latest.sleep_avg_respiration && (
-                <span>Resp: <span className="text-zinc-300">{latest.sleep_avg_respiration} br/min</span></span>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 30-day averages */}
-      <div className="bg-zinc-900 rounded-xl p-4">
-        <div className="text-sm text-zinc-400 mb-3">30-day averages</div>
-        <div className="grid grid-cols-2 gap-3 text-center">
-          <div className="bg-zinc-800 rounded-xl p-3">
-            <div className="text-xs text-zinc-500 mb-1">Avg score</div>
-            <div className={`text-2xl font-bold ${scoreColor(avgScore)}`}>{avgScore ?? "—"}</div>
-          </div>
-          <div className="bg-zinc-800 rounded-xl p-3">
-            <div className="text-xs text-zinc-500 mb-1">Avg HRV</div>
-            <div className="text-2xl font-bold">{avgHRV ?? "—"}<span className="text-sm font-normal text-zinc-500"> ms</span></div>
-          </div>
-        </div>
-      </div>
-
-      {/* History */}
-      <div className="bg-zinc-900 rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-zinc-800 text-sm font-medium text-zinc-300">
-          Sleep history (30 days)
-        </div>
-        <div className="divide-y divide-zinc-800 max-h-96 overflow-y-auto">
-          {rows.length === 0 ? (
-            <div className="px-4 py-3 text-zinc-500 text-sm">No data yet.</div>
-          ) : (
-            rows.map((r) => (
-              <div key={r.date} className="flex justify-between px-4 py-2 text-sm">
-                <span className="text-zinc-400">{r.date}</span>
-                <div className="flex gap-4 items-center">
-                  <span className={scoreColor(r.sleep_score)}>{r.sleep_score ?? "—"}/100</span>
-                  <span className="text-zinc-500 text-xs">
-                    {r.sleep_duration_min
-                      ? `${Math.floor(r.sleep_duration_min / 60)}h${r.sleep_duration_min % 60}m`
-                      : ""}
-                  </span>
-                  <span className="text-zinc-600 text-xs">
-                    {r.hrv_last_night ? `HRV ${r.hrv_last_night}` : ""}
-                  </span>
+            <div className="grid grid-cols-4 gap-2">
+              {STAGES.map((st) => (
+                <div key={st.key} className="text-center">
+                  <div className="mx-auto mb-1 h-1.5 w-6 rounded-full" style={{ background: st.color }} />
+                  <div className="font-mono text-sm font-semibold">{hm(latest[st.key] as number)}</div>
+                  <div className="text-[10px] text-faint">{st.label}</div>
                 </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+              ))}
+            </div>
+          </Card>
 
-      <p className="text-xs text-zinc-600 text-center">
-        Weekly sleep insights generated by Claude Opus — check Telegram for your latest insight.
-      </p>
+          <div className="grid grid-cols-2 gap-4">
+            <Card delay={120}>
+              <SectionLabel>HRV</SectionLabel>
+              <div className="font-mono text-3xl font-bold text-sleep">
+                {latest.hrv_last_night ?? "—"}
+                <span className="text-sm font-medium text-muted">ms</span>
+              </div>
+              <div className="mt-1 text-xs capitalize text-muted">{latest.hrv_status ?? "—"}</div>
+            </Card>
+            <Card delay={140}>
+              <SectionLabel>Recovery</SectionLabel>
+              <div className="font-mono text-3xl font-bold text-pro">
+                {latest.body_battery_end ?? "—"}
+              </div>
+              <div className="mt-1 text-xs text-muted">Body Battery · stress {latest.stress_avg ?? "—"}</div>
+            </Card>
+          </div>
+
+          <Card delay={180}>
+            <SectionLabel>Sleep score · 30d</SectionLabel>
+            <Sparkline data={scoreSeries} color="var(--color-water)" />
+          </Card>
+
+          <Card delay={220}>
+            <SectionLabel>HRV · 30d</SectionLabel>
+            <Sparkline data={hrvSeries} color="var(--color-sleep)" unit="ms" />
+          </Card>
+        </>
+      )}
     </div>
   );
 }
-

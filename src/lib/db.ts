@@ -29,3 +29,18 @@ export const db = new Proxy({} as SupabaseClient, {
     return (getServiceClient() as any)[prop];
   },
 });
+
+// Awaits a Supabase query builder and THROWS if it returned an error, instead of
+// silently ignoring failed writes (which made the bot reply "✅ saved" when the
+// row never persisted). Returns the query's `data`. Use for every write, and for
+// reads where a failure should surface to the user rather than show false success.
+export async function runQuery<T>(
+  query: PromiseLike<{ data: T; error: { message?: string } | null }>,
+  context: string
+): Promise<T> {
+  const { data, error } = await query;
+  if (error) {
+    throw new Error(`${context}: ${error.message ?? "database error"}`);
+  }
+  return data;
+}

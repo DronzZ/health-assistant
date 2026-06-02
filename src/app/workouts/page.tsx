@@ -1,104 +1,143 @@
-﻿export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 import { db } from "@/lib/db";
+import { todayString, dateStringDaysAgo } from "@/lib/date";
 import { getProgressiveOverloadStatus } from "@/lib/overload-tracker";
-import WorkoutForm from "@/components/WorkoutForm";
+import { Card, SectionLabel } from "@/components/charts";
+import { WorkoutLogger } from "@/components/WorkoutLogger";
 
-const trendIcon = { improving: "↑", plateau: "→", declining: "↓" };
-const trendColor = { improving: "text-green-400", plateau: "text-yellow-400", declining: "text-red-400" };
+const trendMeta = {
+  improving: { icon: "↑", color: "var(--color-pro)" },
+  plateau: { icon: "→", color: "var(--color-warn)" },
+  declining: { icon: "↓", color: "var(--color-alert)" },
+} as const;
 
-export default async function WorkoutsPage() {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+const actEmoji: Record<string, string> = {
+  running: "🏃",
+  treadmill_running: "🏃",
+  cycling: "🚴",
+  indoor_cycling: "🚴",
+  strength_training: "🏋️",
+  walking: "🚶",
+  hiking: "🥾",
+  cardio: "❤️",
+};
 
-  const [workoutsRes, overload] = await Promise.all([
+export default async function TrainingPage() {
+  const today = todayString();
+
+  const [workoutsRes, activitiesRes, overload] = await Promise.all([
     db
       .from("workouts")
       .select("date, exercise, set_number, reps, weight_kg")
-      .gte("date", thirtyDaysAgo.toISOString().split("T")[0])
+      .gte("date", dateStringDaysAgo(30))
       .order("date", { ascending: false })
       .order("exercise")
       .order("set_number"),
+    db.from("garmin_activities").select("*").gte("date", dateStringDaysAgo(30)).order("date", { ascending: false }).limit(15),
     getProgressiveOverloadStatus(),
   ]);
 
   const workouts = workoutsRes.data ?? [];
+  const activities = activitiesRes.data ?? [];
 
-  // Group by date → exercise
+  // Today's logged exercises → grouped for the logger
+  const loggedMap: Record<string, { reps: number; weight_kg: number }[]> = {};
+  for (const w of workouts.filter((w) => w.date === today)) {
+    (loggedMap[w.exercise] ??= []).push({ reps: w.reps, weight_kg: w.weight_kg });
+  }
+  const logged = Object.entries(loggedMap).map(([exercise, sets]) => ({ exercise, sets }));
+
+  // Full history grouped by date → exercise
   const byDate: Record<string, Record<string, { reps: number; weight_kg: number }[]>> = {};
   for (const w of workouts) {
-    byDate[w.date] = byDate[w.date] ?? {};
-    byDate[w.date][w.exercise] = byDate[w.date][w.exercise] ?? [];
-    byDate[w.date][w.exercise].push({ reps: w.reps, weight_kg: w.weight_kg });
+    (byDate[w.date] ??= {});
+    (byDate[w.date][w.exercise] ??= []).push({ reps: w.reps, weight_kg: w.weight_kg });
   }
-
-  const dates = Object.keys(byDate).sort().reverse();
+  const historyDates = Object.keys(byDate).sort().reverse();
 
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-bold pt-2">Workouts</h1>
+      <header className="rise pb-1">
+        <h1 className="text-2xl font-bold tracking-tight">Train</h1>
+        <p className="text-xs text-muted">Strength logged by hand · cardio auto from Garmin</p>
+      </header>
 
-      <WorkoutForm />
+      <Card delay={40}>
+        <SectionLabel>Log a lift</SectionLabel>
+        <WorkoutLogger date={today} logged={logged} />
+      </Card>
 
-      {/* Progressive overload status */}
       {overload.length > 0 && (
-        <div className="bg-zinc-900 rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-zinc-800 text-sm font-medium text-zinc-300">
-            Progressive overload (30 days)
+        <Card delay={80}>
+          <SectionLabel>Progressive overload · 30d</SectionLabel>
+          <div className="divide-y divide-white/5">
+            {overload.map((o) => {
+              const t = trendMeta[o.trend];
+              return (
+                <div key={o.exercise} className="flex items-center justify-between py-2.5">
+                  <span className="text-sm capitalize text-ink">{o.exercise}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono text-xs text-faint">{o.recentBestKg}kg e1RM</span>
+                    <span className="font-mono text-sm font-bold" style={{ color: t.color }}>
+                      {t.icon} {o.trend}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <div className="divide-y divide-zinc-800">
-            {overload.map((o) => (
-              <div key={o.exercise} className="flex justify-between px-4 py-3 text-sm">
-                <div className="capitalize">{o.exercise}</div>
-                <div className="flex items-center gap-3">
-                  <span className="text-zinc-500 text-xs">{o.recentBestKg}kg e1RM</span>
-                  <span className={`font-bold ${trendColor[o.trend]}`}>
-                    {trendIcon[o.trend]} {o.trend}
-                  </span>
+        </Card>
+      )}
+
+      <Card delay={120}>
+        <SectionLabel>Activities · Garmin</SectionLabel>
+        {activities.length === 0 ? (
+          <p className="py-2 text-sm text-muted">Geen recente activiteiten gesynct.</p>
+        ) : (
+          <div className="divide-y divide-white/5">
+            {activities.map((a) => (
+              <div key={a.activity_id} className="flex items-center justify-between py-2.5">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-lg">{actEmoji[a.type ?? ""] ?? "🏅"}</span>
+                  <div>
+                    <div className="text-sm text-ink">{a.name ?? a.type ?? "Activity"}</div>
+                    <div className="text-[11px] text-faint">{a.date}</div>
+                  </div>
+                </div>
+                <div className="text-right font-mono text-xs text-muted">
+                  {a.distance_km ? `${a.distance_km.toFixed(1)}km · ` : ""}
+                  {a.duration_min ? `${a.duration_min}m` : ""}
+                  {a.avg_hr ? ` · ${a.avg_hr}bpm` : ""}
                 </div>
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </Card>
 
-      {/* Declining alert */}
-      {overload.some((o) => o.trend === "declining") && (
-        <div className="bg-red-900/30 border border-red-800 rounded-xl p-3 text-sm text-red-400">
-          ⚠️ Declining performance on{" "}
-          {overload
-            .filter((o) => o.trend === "declining")
-            .map((o) => o.exercise)
-            .join(", ")}{" "}
-          — check protein and calorie targets.
-        </div>
-      )}
-
-      {/* Workout history */}
-      {dates.length === 0 ? (
-        <div className="bg-zinc-900 rounded-xl p-4 text-zinc-500 text-sm">
-          Nog geen workouts gelogd. Gebruik het formulier hierboven of stuur <code>/workout bench press 4x8 80kg</code> via Telegram.
-        </div>
-      ) : (
-        dates.map((date) => (
-          <div key={date} className="bg-zinc-900 rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-zinc-800 text-sm font-medium text-zinc-300">
-              {date}
-            </div>
-            <div className="divide-y divide-zinc-800">
-              {Object.entries(byDate[date]).map(([exercise, sets]) => (
-                <div key={exercise} className="px-4 py-3">
-                  <div className="text-sm font-medium capitalize mb-1">{exercise}</div>
-                  <div className="text-xs text-zinc-500">
-                    {sets.map((s, i) => `${s.weight_kg}kg × ${s.reps}`).join(" · ")}
-                  </div>
+      {historyDates.length > 0 && (
+        <Card delay={160}>
+          <SectionLabel>Lift history</SectionLabel>
+          <div className="space-y-3">
+            {historyDates.map((date) => (
+              <div key={date}>
+                <div className="mb-1 font-mono text-[11px] text-faint">{date}</div>
+                <div className="space-y-1">
+                  {Object.entries(byDate[date]).map(([exercise, sets]) => (
+                    <div key={exercise} className="flex justify-between text-sm">
+                      <span className="capitalize text-ink">{exercise}</span>
+                      <span className="font-mono text-xs text-muted">
+                        {sets.map((s) => `${s.weight_kg}×${s.reps}`).join(" · ")}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
-        ))
+        </Card>
       )}
     </div>
   );
 }
-

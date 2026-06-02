@@ -1,109 +1,110 @@
-﻿export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
+import Link from "next/link";
 import { db } from "@/lib/db";
+import { todayString } from "@/lib/date";
+import { getProteinDistribution } from "@/lib/protein-distribution";
+import { Card, SectionLabel, Ring } from "@/components/charts";
+import { FoodLogger } from "@/components/FoodLogger";
 
-const sourceLabel: Record<string, { text: string; color: string }> = {
-  photo_label: { text: "label scan", color: "text-green-400" },
-  database: { text: "database", color: "text-blue-400" },
-  estimated: { text: "estimated ⚠️", color: "text-orange-400" },
-};
-
-const mealIcons: Record<string, string> = { breakfast: "🌅", lunch: "☀️", dinner: "🌙", snack: "🍎" };
+const mealEmoji: Record<string, string> = { breakfast: "🌅", lunch: "☀️", dinner: "🌙", snack: "🍎" };
 
 export default async function FoodPage() {
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayString();
 
-  const { data: entries } = await db
-    .from("food_entries")
-    .select("*")
-    .eq("date", today)
-    .order("meal_slot")
-    .order("id");
+  const [targetsRes, foodRes, protein] = await Promise.all([
+    db.from("user_targets").select("*").maybeSingle(),
+    db
+      .from("food_entries")
+      .select("id, name, calories, protein_g, fiber_g, grams_eaten, meal_slot")
+      .eq("date", today)
+      .order("created_at"),
+    getProteinDistribution(today),
+  ]);
 
-  const { data: targets } = await db.from("user_targets").select("calorie_target, protein_g, fiber_g").single();
+  const targets = targetsRes.data;
+  const entries = foodRes.data ?? [];
 
-  const food = entries ?? [];
-  const slots = ["breakfast", "lunch", "dinner", "snack"];
-
-  const totals = {
-    calories: Math.round(food.reduce((s: number, f: any) => s + (f.calories ?? 0), 0)),
-    protein: Math.round(food.reduce((s: number, f: any) => s + (f.protein_g ?? 0), 0)),
-    carbs: Math.round(food.reduce((s: number, f: any) => s + (f.carbs_g ?? 0), 0)),
-    fat: Math.round(food.reduce((s: number, f: any) => s + (f.fat_g ?? 0), 0)),
-    fiber: Math.round(food.reduce((s: number, f: any) => s + (f.fiber_g ?? 0), 0)),
-  };
+  const calTarget = targets?.calorie_target ?? 2000;
+  const proTarget = targets?.protein_g ?? 160;
+  const fibTarget = targets?.fiber_g ?? 35;
 
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-bold pt-2">Food Log</h1>
+      <header className="rise flex items-end justify-between pb-1">
+        <h1 className="text-2xl font-bold tracking-tight">Fuel</h1>
+        <Link
+          href="/meal-plan"
+          className="rounded-full border border-hairline px-3 py-1.5 text-xs font-medium text-muted transition hover:text-ink"
+        >
+          Meal plan →
+        </Link>
+      </header>
 
-      {/* Totals */}
-      <div className="bg-zinc-900 rounded-xl p-4">
-        <div className="text-sm text-zinc-400 mb-2">Today's totals</div>
-        <div className="grid grid-cols-5 gap-2 text-center">
-          {[
-            { label: "kcal", value: totals.calories, target: targets?.calorie_target },
-            { label: "protein", value: `${totals.protein}g`, target: targets?.protein_g ? `${targets.protein_g}g` : undefined },
-            { label: "carbs", value: `${totals.carbs}g` },
-            { label: "fat", value: `${totals.fat}g` },
-            { label: "fiber", value: `${totals.fiber}g`, target: targets?.fiber_g ? `${targets.fiber_g}g` : undefined },
-          ].map((s) => (
-            <div key={s.label}>
-              <div className="text-base font-bold">{s.value}</div>
-              {s.target && <div className="text-xs text-zinc-500">/ {s.target}</div>}
-              <div className="text-xs text-zinc-500">{s.label}</div>
+      <Card delay={40}>
+        <SectionLabel>Macros today</SectionLabel>
+        <div className="grid grid-cols-3 gap-2">
+          <Ring
+            value={protein.totalCalories}
+            max={calTarget}
+            size={88}
+            color="var(--color-cal)"
+            label="kcal"
+            center={<RingNum value={Math.round(protein.totalCalories)} sub={`/ ${calTarget}`} />}
+          />
+          <Ring
+            value={protein.totalProtein}
+            max={proTarget}
+            size={88}
+            color="var(--color-pro)"
+            label="protein"
+            center={<RingNum value={`${Math.round(protein.totalProtein)}g`} sub={`/ ${proTarget}`} />}
+          />
+          <Ring
+            value={protein.totalFiber}
+            max={fibTarget}
+            size={88}
+            color="var(--color-water)"
+            label="fiber"
+            center={<RingNum value={`${Math.round(protein.totalFiber)}g`} sub={`/ ${fibTarget}`} />}
+          />
+        </div>
+      </Card>
+
+      <Card delay={80}>
+        <SectionLabel>Protein per meal</SectionLabel>
+        <div className="grid grid-cols-4 gap-2">
+          {protein.meals.map((m) => (
+            <div key={m.slot} className="text-center">
+              <div className="text-base">{mealEmoji[m.slot]}</div>
+              <div className={`font-mono text-lg font-semibold ${m.isLowProtein ? "text-warn" : "text-ink"}`}>
+                {m.protein}
+                <span className="text-[10px] text-muted">g</span>
+              </div>
+              <div className="text-[10px] capitalize text-faint">{m.slot}</div>
             </div>
           ))}
         </div>
-      </div>
+        {protein.lowProteinMeals.length > 0 && (
+          <p className="mt-3 rounded-lg bg-warn/10 px-3 py-2 text-xs text-warn">
+            ⚠ Lage eiwit ({"<"}25g) bij: {protein.lowProteinMeals.join(", ")}
+          </p>
+        )}
+      </Card>
 
-      {/* Meals */}
-      {slots.map((slot) => {
-        const slotEntries = food.filter((f: any) => f.meal_slot === slot);
-        const slotProtein = Math.round(slotEntries.reduce((s: number, f: any) => s + (f.protein_g ?? 0), 0));
-        const slotFiber = Math.round(slotEntries.reduce((s: number, f: any) => s + (f.fiber_g ?? 0), 0));
-        const slotCals = Math.round(slotEntries.reduce((s: number, f: any) => s + (f.calories ?? 0), 0));
-
-        return (
-          <div key={slot} className="bg-zinc-900 rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
-              <span className="font-medium capitalize">
-                {mealIcons[slot]} {slot}
-              </span>
-              <span className="text-xs text-zinc-500">
-                {slotCals} kcal · {slotProtein}g pro · {slotFiber}g fiber
-              </span>
-            </div>
-            {slotEntries.length === 0 ? (
-              <div className="px-4 py-3 text-zinc-600 text-sm">Nothing logged</div>
-            ) : (
-              <div className="divide-y divide-zinc-800">
-                {slotEntries.map((f: any) => {
-                  const src = sourceLabel[f.source] ?? { text: f.source, color: "text-zinc-500" };
-                  return (
-                    <div key={f.id} className="px-4 py-3">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="text-sm font-medium">{f.name}</div>
-                          <div className="text-xs text-zinc-500 mt-0.5">
-                            {f.grams_eaten ? `${f.grams_eaten}g · ` : ""}
-                            {Math.round(f.calories)} kcal · {Math.round(f.protein_g)}g pro
-                            {f.fiber_g ? ` · ${Math.round(f.fiber_g)}g fiber` : ""}
-                          </div>
-                        </div>
-                        <span className={`text-xs mt-0.5 ${src.color}`}>{src.text}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
-
-      <p className="text-xs text-zinc-600 text-center">Log food by sending a message or nutrition photo to your Telegram bot.</p>
+      <Card delay={120}>
+        <SectionLabel>Food log</SectionLabel>
+        <FoodLogger entries={entries} />
+      </Card>
     </div>
   );
 }
 
+function RingNum({ value, sub }: { value: React.ReactNode; sub?: string }) {
+  return (
+    <div className="text-center leading-none">
+      <div className="font-mono text-base font-semibold text-ink">{value}</div>
+      {sub && <div className="mt-0.5 font-mono text-[9px] text-faint">{sub}</div>}
+    </div>
+  );
+}
