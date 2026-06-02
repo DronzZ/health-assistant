@@ -6,7 +6,11 @@ export function isAllowedChat(chatId: number | string): boolean {
 }
 
 async function sendRaw(text: string): Promise<void> {
-  await fetch(`${TELEGRAM_API}/sendMessage`, {
+  // First try with Markdown formatting. Telegram rejects the whole message
+  // (HTTP 400) if the Markdown is malformed (e.g. an unbalanced * or _),
+  // which would silently drop the reply. On failure, resend as plain text
+  // so the user always receives the content.
+  const res = await fetch(`${TELEGRAM_API}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -15,6 +19,21 @@ async function sendRaw(text: string): Promise<void> {
       parse_mode: "Markdown",
     }),
   });
+
+  if (!res.ok) {
+    console.error("Telegram sendMessage failed with Markdown, retrying as plain text:", await res.text());
+    const plain = await fetch(`${TELEGRAM_API}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: process.env.TELEGRAM_CHAT_ID,
+        text,
+      }),
+    });
+    if (!plain.ok) {
+      console.error("Telegram sendMessage failed as plain text too:", await plain.text());
+    }
+  }
 }
 
 // Splits long messages at word boundaries and sends sequentially

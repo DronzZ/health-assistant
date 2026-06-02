@@ -263,7 +263,7 @@ export async function handleConversation(userMessage: string): Promise<void> {
 
   const response = await client.messages.create({
     model,
-    max_tokens: 1024,
+    max_tokens: 2048,
     system: `${SYSTEM_PROMPT}\n\n${context}`,
     tools: LOGGING_TOOLS,
     messages,
@@ -283,7 +283,7 @@ export async function handleConversation(userMessage: string): Promise<void> {
   if (toolResults.length > 0) {
     const followUp = await client.messages.create({
       model,
-      max_tokens: 512,
+      max_tokens: 2048,
       system: `${SYSTEM_PROMPT}\n\n${context}`,
       messages: [
         ...messages,
