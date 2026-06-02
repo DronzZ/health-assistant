@@ -38,6 +38,9 @@ async function sendRaw(text: string): Promise<void> {
 
 // Splits long messages at word boundaries and sends sequentially
 export async function sendMessage(text: string): Promise<void> {
+  // Telegram rejects empty messages with a 400; never send one.
+  if (!text || !text.trim()) return;
+
   if (text.length <= MAX_MESSAGE_LENGTH) {
     await sendRaw(text);
     return;

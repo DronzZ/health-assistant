@@ -269,6 +269,13 @@ export async function handleConversation(userMessage: string): Promise<void> {
     messages,
   });
 
+  const textOf = (content: Anthropic.ContentBlock[]): string =>
+    content
+      .filter((b) => b.type === "text")
+      .map((b) => (b as Anthropic.TextBlock).text)
+      .join("\n")
+      .trim();
+
   // Execute any tool calls
   const toolResults: Anthropic.ToolResultBlockParam[] = [];
   for (const block of response.content) {
@@ -279,7 +286,8 @@ export async function handleConversation(userMessage: string): Promise<void> {
   }
 
   // If tools were called, get the final text response
-  let replyText = "";
+  const firstText = textOf(response.content);
+  let replyText = firstText;
   if (toolResults.length > 0) {
     const followUp = await client.messages.create({
       model,
@@ -291,15 +299,15 @@ export async function handleConversation(userMessage: string): Promise<void> {
         { role: "user", content: toolResults },
       ],
     });
-    replyText = followUp.content
-      .filter((b) => b.type === "text")
-      .map((b) => (b as Anthropic.TextBlock).text)
-      .join("\n");
-  } else {
-    replyText = response.content
-      .filter((b) => b.type === "text")
-      .map((b) => (b as Anthropic.TextBlock).text)
-      .join("\n");
+    // Prefer the follow-up text, but fall back to any text from the first
+    // response so a tool-only turn never produces an empty reply.
+    replyText = textOf(followUp.content) || firstText;
+  }
+
+  // Final safety net: Telegram rejects empty messages. If the model produced
+  // no text at all (e.g. a pure tool-call turn), send a sensible default.
+  if (!replyText) {
+    replyText = toolResults.length > 0 ? "✅ Genoteerd." : "🤔 Geen antwoord gegenereerd — probeer het opnieuw.";
   }
 
   // Persist conversation
